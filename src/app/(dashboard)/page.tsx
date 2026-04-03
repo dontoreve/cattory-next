@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -10,6 +10,83 @@ import { formatDate, isOverdue } from "@/lib/utils/dates";
 import { matchesSearch } from "@/lib/utils/search";
 import { TAG_COLORS, getColorIndex } from "@/lib/utils/colors";
 import type { Task } from "@/lib/types";
+
+// ── Drag-to-scroll with momentum ──────────────────────────────
+function useDragScroll() {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const c = el; // non-null alias for closures
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let lastX = 0;
+    let velocity = 0;
+    let momentumId = 0;
+
+    function onMouseDown(e: MouseEvent) {
+      isDown = true;
+      c.style.cursor = "grabbing";
+      c.style.userSelect = "none";
+      startX = e.clientX;
+      lastX = e.clientX;
+      scrollLeft = c.scrollLeft;
+      velocity = 0;
+      cancelAnimationFrame(momentumId);
+    }
+
+    function onMouseUp() {
+      if (!isDown) return;
+      isDown = false;
+      c.style.cursor = "";
+      c.style.userSelect = "";
+      let vel = -velocity * 1.4;
+      function momentum() {
+        if (Math.abs(vel) > 0.4) {
+          c.scrollLeft += vel;
+          vel *= 0.88;
+          momentumId = requestAnimationFrame(momentum);
+        }
+      }
+      momentum();
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      if (!isDown) return;
+      e.preventDefault();
+      velocity = e.clientX - lastX;
+      lastX = e.clientX;
+      c.scrollLeft = scrollLeft - (e.clientX - startX) * 1.5;
+    }
+
+    function onWheel(e: WheelEvent) {
+      e.preventDefault();
+      cancelAnimationFrame(momentumId);
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      c.scrollLeft += delta;
+    }
+
+    c.addEventListener("mousedown", onMouseDown);
+    c.addEventListener("mouseleave", onMouseUp);
+    c.addEventListener("mouseup", onMouseUp);
+    c.addEventListener("mousemove", onMouseMove);
+    c.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      c.removeEventListener("mousedown", onMouseDown);
+      c.removeEventListener("mouseleave", onMouseUp);
+      c.removeEventListener("mouseup", onMouseUp);
+      c.removeEventListener("mousemove", onMouseMove);
+      c.removeEventListener("wheel", onWheel);
+      cancelAnimationFrame(momentumId);
+    };
+  }, []);
+
+  return ref;
+}
 
 // ── Sorting: 4-tier by deadline ────────────────────────────────
 function sortTasksDynamic(tasks: Task[]): Task[] {
@@ -356,6 +433,7 @@ export default function PriorityPage() {
   } = useDashboard();
   const { showToast } = useToast();
   const celebrate = useCelebration();
+  const projectsScrollRef = useDragScroll();
 
   // Filters
   const [priorityFilter, setPriorityFilter] = useState<number | null>(null);
@@ -496,7 +574,7 @@ export default function PriorityPage() {
           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">
             Proyectos
           </h3>
-          <div className="flex gap-4 overflow-x-auto pt-2 pb-4 -mx-1 px-1 custom-scroll">
+          <div ref={projectsScrollRef} className="flex gap-4 overflow-x-auto pt-2 pb-4 -mx-1 px-1 custom-scroll cursor-grab" style={{ scrollBehavior: "auto", WebkitOverflowScrolling: "touch" }}>
             {projectOverview.map((p) => (
               <ProjectCard
                 key={p.id}
