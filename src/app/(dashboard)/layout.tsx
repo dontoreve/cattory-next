@@ -32,6 +32,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     reopenTask,
     deleteTask,
     getProjectsForMember,
+    setGlobalSearch,
     previewTask,
     openPreview,
     closePreview,
@@ -129,7 +130,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       />
 
       <main className="flex-1 flex flex-col min-h-0 md:ml-[280px]">
-        <Header pathname={pathname} />
+        <Header pathname={pathname} onSearch={setGlobalSearch} />
         <div className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
           {children}
         </div>

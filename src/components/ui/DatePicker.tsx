@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 const MONTHS = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -190,11 +191,16 @@ export default function DatePicker({
         className="sm:hidden w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
       />
 
-      {/* Calendar popover (desktop) */}
-      {isOpen && (
+      {/* Calendar popover (desktop) — rendered via portal to escape overflow containers */}
+      {isOpen && typeof document !== "undefined" && createPortal(
         <div
           ref={calRef}
-          className="hidden sm:block absolute left-0 top-full mt-1 z-50 w-[276px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3"
+          className="hidden sm:block fixed z-[9999] w-[276px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3"
+          style={(() => {
+            const rect = triggerRef.current?.getBoundingClientRect();
+            if (!rect) return { top: 0, left: 0 };
+            return { top: rect.bottom + 4, left: rect.left };
+          })()}
           onMouseEnter={mode === "hover" ? cancelClose : undefined}
           onMouseLeave={mode === "hover" ? scheduleClose : undefined}
         >
@@ -293,7 +299,8 @@ export default function DatePicker({
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

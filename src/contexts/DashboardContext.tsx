@@ -54,6 +54,10 @@ interface DashboardState {
   previewTask: Task | null;
   openPreview: (task: Task) => void;
   closePreview: () => void;
+
+  // Global search
+  globalSearch: string;
+  setGlobalSearch: (query: string) => void;
 }
 
 const DashboardContext = createContext<DashboardState>(null!);
@@ -97,6 +101,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setEditingTask(null);
   }, []);
 
+  // Global search
+  const [globalSearch, setGlobalSearch] = useState("");
+
   // Preview modal state
   const [previewTask, setPreviewTask] = useState<Task | null>(null);
 
@@ -132,6 +139,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         previewTask,
         openPreview,
         closePreview,
+        globalSearch,
+        setGlobalSearch,
       }}
     >
       {children}

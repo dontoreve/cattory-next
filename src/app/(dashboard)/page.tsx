@@ -305,12 +305,12 @@ export default function PriorityPage() {
     completeTask,
     openTaskModal,
     openPreview,
+    globalSearch: searchQuery,
   } = useDashboard();
   const { showToast } = useToast();
   const celebrate = useCelebration();
 
   // Filters
-  const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<number | null>(null);
   const [projectFilters, setProjectFilters] = useState<Set<string>>(new Set());
   const [userFilters, setUserFilters] = useState<Set<string>>(new Set());
@@ -439,7 +439,7 @@ export default function PriorityPage() {
           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">
             Proyectos
           </h3>
-          <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 custom-scroll">
+          <div className="flex gap-4 overflow-x-auto pt-2 pb-4 -mx-1 px-1 custom-scroll">
             {projectOverview.map((p) => (
               <ProjectCard
                 key={p.id}
@@ -457,19 +457,6 @@ export default function PriorityPage() {
 
       {/* ── Filters Bar ─────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Search (mobile) */}
-        <div className="relative w-full sm:w-auto sm:hidden">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-            search
-          </span>
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar..."
-            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-          />
-        </div>
-
         {/* Priority filter chips */}
         <div className="flex gap-1.5 flex-wrap">
           <button
