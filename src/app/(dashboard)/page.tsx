@@ -119,8 +119,8 @@ function ProjectCard({
   );
 }
 
-// Grid columns definition for the priority list
-const GRID_COLS = "grid-cols-[40px_1fr_100px_100px_130px_120px_70px]";
+// Grid columns definition for the priority list (inline style to avoid Tailwind scanning issues)
+const GRID_STYLE = { gridTemplateColumns: "40px 1fr 100px 100px 130px 120px 70px" } as const;
 
 // ── Priority Row (Desktop) ─────────────────────────────────────
 function PriorityRow({
@@ -145,8 +145,8 @@ function PriorityRow({
 
   return (
     <div
-      className={`group grid ${GRID_COLS} items-center py-3 px-3 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-50`}
-      style={{ animation: "rowSlideIn 0.3s ease-out" }}
+      className="group grid items-center py-3 px-3 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-50"
+      style={{ ...GRID_STYLE, animation: "rowSlideIn 0.3s ease-out" }}
       onClick={() => onPreview(task)}
     >
       {/* Rank */}
@@ -537,7 +537,7 @@ export default function PriorityPage() {
       {/* ── Priority List (Desktop) ────────────────────────── */}
       <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
         {/* Header */}
-        <div className={`grid ${GRID_COLS} items-center py-3 px-3 border-b border-slate-100 text-xs text-slate-400 uppercase tracking-wider`}>
+        <div className="grid items-center py-3 px-3 border-b border-slate-100 text-xs text-slate-400 uppercase tracking-wider" style={GRID_STYLE}>
           <span className="text-center">#</span>
           <span>Tarea</span>
           <span>Proyecto</span>
