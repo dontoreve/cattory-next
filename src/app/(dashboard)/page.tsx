@@ -152,7 +152,7 @@ function PriorityRow({
       onClick={() => onPreview(task)}
     >
       {/* Rank */}
-      <td className={`px-2 py-4 w-12 text-center select-none ${
+      <td className={`px-2 py-4 text-center select-none ${
         isTop ? "text-2xl font-black text-primary/40"
         : isTop3 ? "text-lg font-bold text-slate-300"
         : "text-sm font-bold text-slate-300"
@@ -160,11 +160,11 @@ function PriorityRow({
         {rank}
       </td>
       {/* Title */}
-      <td className="px-3 py-4 max-w-[280px]">
+      <td className="px-3 py-4">
         <div className="flex items-center gap-2 min-w-0">
           <div className={`size-2 rounded-full ${statusDot} shrink-0`} />
-          <span className="font-medium text-sm text-slate-800 truncate">
-            {task.title}
+          <span className="font-medium text-sm text-slate-800 truncate" title={task.title}>
+            {task.title.length > 50 ? task.title.substring(0, 50) + "..." : task.title}
           </span>
         </div>
       </td>
@@ -584,11 +584,20 @@ export default function PriorityPage() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left border-collapse">
+          <table className="w-full min-w-[900px] text-left border-collapse table-fixed">
+            <colgroup>
+              <col style={{ width: "48px" }} />
+              <col style={{ width: "30%" }} />
+              <col style={{ width: "120px" }} />
+              <col style={{ width: "110px" }} />
+              <col style={{ width: "140px" }} />
+              <col style={{ width: "160px" }} />
+              <col style={{ width: "120px" }} />
+            </colgroup>
             <thead>
               <tr className="text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
-                <th className="px-2 py-4 w-12">#</th>
-                <th className="px-3 py-4 max-w-[280px]">Tarea</th>
+                <th className="px-2 py-4">#</th>
+                <th className="px-3 py-4">Tarea</th>
                 <th className="px-3 py-4">Proyecto</th>
                 <th className="px-3 py-4">Prioridad</th>
                 <th className="px-3 py-4">Fecha Limite</th>
