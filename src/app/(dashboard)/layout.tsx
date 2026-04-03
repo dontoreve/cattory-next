@@ -1,6 +1,175 @@
 "use client";
 
-import { AuthProvider } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { DashboardProvider, useDashboard } from "@/contexts/DashboardContext";
+import { ToastProvider, useToast } from "@/components/ui/Toast";
+import Sidebar from "@/components/layout/Sidebar";
+import Header from "@/components/layout/Header";
+import MobileNav from "@/components/layout/MobileNav";
+import MobileMoreSheet from "@/components/layout/MobileMoreSheet";
+import FloatingNewTaskButton from "@/components/layout/FloatingNewTaskButton";
+import TeamMembersModal from "@/components/modals/TeamMembersModal";
+import TaskModal, { type TaskFormData } from "@/components/modals/TaskModal";
+import TaskPreviewModal from "@/components/modals/TaskPreviewModal";
+import { useCelebration } from "@/components/ui/CelebrationAnimation";
+
+function DashboardShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, profile, loading } = useAuth();
+  const {
+    teamMembers,
+    projects,
+    taskModalOpen,
+    editingTask,
+    openTaskModal,
+    closeTaskModal,
+    createTask,
+    updateTask,
+    completeTask,
+    reopenTask,
+    deleteTask,
+    previewTask,
+    openPreview,
+    closePreview,
+  } = useDashboard();
+  const { showToast } = useToast();
+  const celebrate = useCelebration();
+
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [teamModalOpen, setTeamModalOpen] = useState(false);
+
+  // Keyboard shortcut: C → open new task, Escape → close modal
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && taskModalOpen) {
+        closeTaskModal();
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = (document.activeElement as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (taskModalOpen) return;
+      if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        openTaskModal();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [taskModalOpen, openTaskModal, closeTaskModal]);
+
+  // Redirect to login if not authenticated
+  if (!loading && !user) {
+    router.replace("/login");
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background-light dark:bg-background-dark">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  async function handleSaveTask(data: TaskFormData) {
+    try {
+      if (editingTask) {
+        await updateTask(editingTask.id, data);
+        showToast("Tarea actualizada", "success");
+      } else {
+        await createTask(data);
+        showToast("Tarea creada", "success");
+      }
+    } catch {
+      showToast("Error al guardar la tarea");
+    }
+  }
+
+  async function handleCompleteFromPreview(task: { id: string; status: string }) {
+    try {
+      if (task.status === "done") {
+        await reopenTask(task.id);
+        showToast("Tarea reabierta", "success");
+      } else {
+        await completeTask(task.id);
+        const firstName = profile?.full_name?.split(" ")[0];
+        celebrate(null, firstName);
+      }
+    } catch {
+      showToast("Error al actualizar la tarea");
+    }
+  }
+
+  async function handleDeleteFromPreview(task: { id: string }) {
+    try {
+      await deleteTask(task.id);
+      showToast("Tarea eliminada", "success");
+    } catch {
+      showToast("Error al eliminar la tarea");
+    }
+  }
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-background-light dark:bg-background-dark">
+      <Sidebar
+        onTeamClick={() => setTeamModalOpen(true)}
+        onNewProjectClick={() => {/* Phase later */}}
+        onManageProjectsClick={() => {/* Phase later */}}
+      />
+
+      <main className="flex-1 flex flex-col overflow-hidden md:ml-[280px]">
+        <Header pathname={pathname} />
+        <div className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
+          {children}
+        </div>
+      </main>
+
+      <FloatingNewTaskButton onClick={() => openTaskModal()} />
+
+      <MobileNav
+        onNewTask={() => openTaskModal()}
+        onMoreClick={() => setMoreSheetOpen(true)}
+      />
+
+      <MobileMoreSheet
+        open={moreSheetOpen}
+        onClose={() => setMoreSheetOpen(false)}
+        onTeamClick={() => setTeamModalOpen(true)}
+        onNewProjectClick={() => {}}
+        onManageProjectsClick={() => {}}
+      />
+
+      <TeamMembersModal
+        open={teamModalOpen}
+        onClose={() => setTeamModalOpen(false)}
+        members={teamMembers}
+      />
+
+      <TaskModal
+        open={taskModalOpen}
+        onClose={closeTaskModal}
+        onSave={handleSaveTask}
+        task={editingTask}
+        teamMembers={teamMembers}
+        projects={projects}
+        currentUserId={user?.id ?? ""}
+      />
+
+      <TaskPreviewModal
+        open={!!previewTask}
+        task={previewTask}
+        onClose={closePreview}
+        onEdit={(task) => openTaskModal(task)}
+        onComplete={handleCompleteFromPreview}
+        onDelete={handleDeleteFromPreview}
+      />
+    </div>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -9,33 +178,11 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="flex h-screen overflow-hidden">
-        {/* Sidebar — will be extracted into <Sidebar /> component */}
-        <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:border-slate-100 md:bg-white">
-          <div className="flex h-14 items-center gap-2 px-4">
-            <img src="/logo.png" alt="Cattory" className="h-7 w-7" />
-            <span className="text-lg font-bold tracking-tight">Cattory</span>
-          </div>
-          <nav className="flex-1 space-y-1 px-3 py-2 text-sm">
-            <p className="px-2 py-1 text-xs text-slate-400">
-              Sidebar — pendiente de migrar
-            </p>
-          </nav>
-        </aside>
-
-        {/* Main content area */}
-        <main className="flex flex-1 flex-col overflow-hidden">
-          {/* Header — will be extracted into <Header /> component */}
-          <header className="flex h-14 items-center border-b border-slate-100 bg-white px-4 md:px-6">
-            <p className="text-sm text-slate-400">
-              Header — pendiente de migrar
-            </p>
-          </header>
-
-          {/* Page content */}
-          <div className="flex-1 overflow-y-auto">{children}</div>
-        </main>
-      </div>
+      <ToastProvider>
+        <DashboardProvider>
+          <DashboardShell>{children}</DashboardShell>
+        </DashboardProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

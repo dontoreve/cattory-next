@@ -1,13 +1,627 @@
 "use client";
 
-// Priority View — main page (index)
-export default function PriorityPage() {
+import { useState, useMemo } from "react";
+import { useDashboard } from "@/contexts/DashboardContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/Toast";
+import { useCelebration } from "@/components/ui/CelebrationAnimation";
+import { getPriorityConfig, PRIORITY_BG } from "@/lib/utils/priority";
+import { formatDate, isOverdue } from "@/lib/utils/dates";
+import { matchesSearch } from "@/lib/utils/search";
+import { TAG_COLORS, getColorIndex } from "@/lib/utils/colors";
+import type { Task } from "@/lib/types";
+
+// ── Sorting: 4-tier by deadline ────────────────────────────────
+function sortTasksDynamic(tasks: Task[]): Task[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayMs = today.getTime();
+
+  function deadlineMs(t: Task): number | null {
+    if (!t.deadline) return null;
+    const [y, m, d] = t.deadline.split("-").map(Number);
+    return new Date(y, m - 1, d).getTime();
+  }
+
+  function tier(t: Task): number {
+    const ms = deadlineMs(t);
+    if (ms === null) return 3; // No deadline
+    if (ms < todayMs) return 0; // Overdue
+    if (ms === todayMs) return 1; // Due today
+    return 2; // Future
+  }
+
+  return [...tasks].sort((a, b) => {
+    const ta = tier(a);
+    const tb = tier(b);
+    if (ta !== tb) return ta - tb;
+
+    const msA = deadlineMs(a);
+    const msB = deadlineMs(b);
+
+    if (ta === 0) {
+      // Overdue: most overdue first
+      if (msA !== msB) return (msA ?? 0) - (msB ?? 0);
+    } else if (ta === 2) {
+      // Future: soonest first
+      if (msA !== msB) return (msA ?? 0) - (msB ?? 0);
+    }
+
+    // Within same tier/date: higher priority first
+    return b.priority - a.priority;
+  });
+}
+
+// ── Project Overview Card ──────────────────────────────────────
+function ProjectCard({
+  name,
+  tasks,
+  colorIdx,
+  onClick,
+}: {
+  name: string;
+  tasks: Task[];
+  colorIdx: number;
+  onClick?: () => void;
+}) {
+  const done = tasks.filter((t) => t.status === "done").length;
+  const total = tasks.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const active = tasks.filter((t) => t.status !== "done");
+  const nextDeadline = active
+    .map((t) => t.deadline)
+    .filter(Boolean)
+    .sort()[0];
+
+  const color = TAG_COLORS[colorIdx % TAG_COLORS.length];
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">Prioridades</h1>
-      <p className="mt-2 text-slate-500">
-        Vista de prioridades — pendiente de migrar desde priority.js
-      </p>
+    <button
+      onClick={onClick}
+      className="flex-shrink-0 w-56 p-4 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-md transition-shadow text-left"
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className={`w-2.5 h-2.5 rounded-full ${color.bg} ring-2 ${color.ring}`}
+        />
+        <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
+          {name}
+        </span>
+      </div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-slate-400">
+          {done}/{total} completadas
+        </span>
+        <span className={`text-sm font-bold ${color.text}`}>{pct}%</span>
+      </div>
+      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${color.bg} rounded-full transition-all duration-500`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {nextDeadline && (
+        <p className="mt-2 text-[11px] text-slate-400 truncate">
+          Prox: {formatDate(nextDeadline)}
+        </p>
+      )}
+    </button>
+  );
+}
+
+// ── Priority Row (Desktop) ─────────────────────────────────────
+function PriorityRow({
+  task,
+  rank,
+  onPreview,
+  onComplete,
+}: {
+  task: Task;
+  rank: number;
+  onPreview: (t: Task) => void;
+  onComplete: (t: Task, el?: HTMLElement) => void;
+}) {
+  const pc = getPriorityConfig(task.priority);
+  const pb = PRIORITY_BG[task.priority] ?? "";
+  const overdue = isOverdue(task.deadline);
+
+  return (
+    <tr
+      className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+      style={{ animation: "rowSlideIn 0.3s ease-out" }}
+      onClick={() => onPreview(task)}
+    >
+      {/* Rank */}
+      <td className="py-3 px-4 text-center">
+        <span
+          className={`font-black ${
+            rank === 1
+              ? "text-xl text-primary"
+              : rank <= 3
+                ? "text-base text-slate-700 dark:text-slate-300"
+                : "text-sm text-slate-400"
+          }`}
+        >
+          {rank}
+        </span>
+      </td>
+      {/* Title */}
+      <td className="py-3 px-4">
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate max-w-xs">
+          {task.title}
+        </p>
+      </td>
+      {/* Project */}
+      <td className="py-3 px-4">
+        {task.projects?.name && (
+          <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">
+            {task.projects.name}
+          </span>
+        )}
+      </td>
+      {/* Priority */}
+      <td className="py-3 px-4">
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${pb}`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`} />
+          {pc.label}
+        </span>
+      </td>
+      {/* Deadline */}
+      <td className="py-3 px-4">
+        {task.deadline ? (
+          <span
+            className={`text-xs font-medium ${
+              overdue ? "text-red-500" : "text-slate-500"
+            }`}
+          >
+            {formatDate(task.deadline)}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-300">—</span>
+        )}
+      </td>
+      {/* Assignee */}
+      <td className="py-3 px-4">
+        <span className="text-xs text-slate-500 truncate block max-w-[120px]">
+          {task.profiles?.full_name ?? "—"}
+        </span>
+      </td>
+      {/* Actions */}
+      <td className="py-3 px-4">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onComplete(task, e.currentTarget);
+          }}
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg"
+          title="Completar"
+        >
+          <span className="material-symbols-outlined text-emerald-500 text-[20px]">
+            check_circle
+          </span>
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+// ── Priority Card (Mobile) ─────────────────────────────────────
+function PriorityCard({
+  task,
+  rank,
+  onPreview,
+  onComplete,
+}: {
+  task: Task;
+  rank: number;
+  onPreview: (t: Task) => void;
+  onComplete: (t: Task, el?: HTMLElement) => void;
+}) {
+  const pc = getPriorityConfig(task.priority);
+  const pb = PRIORITY_BG[task.priority] ?? "";
+  const overdue = isOverdue(task.deadline);
+
+  return (
+    <div
+      className="task-card bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 cursor-pointer active:scale-[0.98] transition-transform"
+      onClick={() => onPreview(task)}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={`font-black mt-0.5 shrink-0 ${
+            rank === 1
+              ? "text-lg text-primary"
+              : rank <= 3
+                ? "text-base text-slate-700 dark:text-slate-300"
+                : "text-sm text-slate-400"
+          }`}
+        >
+          #{rank}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+            {task.title}
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${pb}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`} />
+              {pc.label}
+            </span>
+            {task.projects?.name && (
+              <span className="text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                {task.projects.name}
+              </span>
+            )}
+            {task.deadline && (
+              <span
+                className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                  overdue
+                    ? "text-red-500 bg-red-50 dark:bg-red-900/20"
+                    : "text-slate-500 bg-slate-100 dark:bg-slate-800"
+                }`}
+              >
+                {formatDate(task.deadline)}
+              </span>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onComplete(task, e.currentTarget);
+          }}
+          className="p-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg shrink-0"
+        >
+          <span className="material-symbols-outlined text-emerald-500 text-[20px]">
+            check_circle
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ──────────────────────────────────────────────────
+export default function PriorityPage() {
+  const { user, profile, role } = useAuth();
+  const {
+    tasks,
+    tasksLoading,
+    projects,
+    completeTask,
+    openTaskModal,
+    openPreview,
+  } = useDashboard();
+  const { showToast } = useToast();
+  const celebrate = useCelebration();
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<number | null>(null);
+  const [projectFilters, setProjectFilters] = useState<Set<string>>(new Set());
+  const [userFilters, setUserFilters] = useState<Set<string>>(new Set());
+  const [viewAll, setViewAll] = useState(false);
+
+  // Filter + sort tasks
+  const sortedTasks = useMemo(() => {
+    let filtered = tasks.filter((t) => t.status !== "done");
+
+    // Project filter
+    if (projectFilters.size > 0) {
+      filtered = filtered.filter((t) =>
+        t.project_id ? projectFilters.has(t.project_id) : false
+      );
+    }
+
+    // Priority filter
+    if (priorityFilter !== null) {
+      filtered = filtered.filter((t) => t.priority === priorityFilter);
+    }
+
+    // User filter (admin only)
+    if (userFilters.size > 0 && role === "admin") {
+      filtered = filtered.filter(
+        (t) =>
+          userFilters.has(t.responsible_id) ||
+          (t.secondary_responsible_id &&
+            userFilters.has(t.secondary_responsible_id))
+      );
+    }
+
+    // Search
+    if (searchQuery) {
+      filtered = filtered.filter((t) =>
+        matchesSearch(
+          searchQuery,
+          t.title,
+          t.description,
+          t.projects?.name
+        )
+      );
+    }
+
+    // Deduplicate
+    const deduped = [...new Map(filtered.map((t) => [t.id, t])).values()];
+
+    return sortTasksDynamic(deduped);
+  }, [tasks, projectFilters, priorityFilter, userFilters, role, searchQuery]);
+
+  const displayTasks = viewAll ? sortedTasks : sortedTasks.slice(0, 10);
+
+  // Project overview data
+  const projectOverview = useMemo(() => {
+    const activeTasks = tasks.filter((t) => t.status !== "done" || t.completed_at);
+    const byProject = new Map<string, { name: string; tasks: Task[] }>();
+
+    for (const p of projects) {
+      byProject.set(p.id, {
+        name: p.name,
+        tasks: activeTasks.filter((t) => t.project_id === p.id),
+      });
+    }
+
+    // Unassigned
+    const unassigned = activeTasks.filter((t) => !t.project_id);
+    if (unassigned.length > 0) {
+      byProject.set("__none__", { name: "Sin Proyecto", tasks: unassigned });
+    }
+
+    return [...byProject.entries()]
+      .map(([id, data]) => ({ id, ...data }))
+      .sort((a, b) => b.tasks.length - a.tasks.length);
+  }, [tasks, projects]);
+
+  // Team members for filter
+  const { teamMembers } = useDashboard();
+
+  async function handleComplete(task: Task, el?: HTMLElement) {
+    try {
+      await completeTask(task.id);
+      const firstName = profile?.full_name?.split(" ")[0];
+      celebrate(el, firstName);
+    } catch {
+      showToast("Error al completar la tarea");
+    }
+  }
+
+  function toggleProjectFilter(id: string) {
+    setProjectFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleUserFilter(id: string) {
+    setUserFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  if (tasksLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* ── Project Overview ────────────────────────────────── */}
+      {projectOverview.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">
+            Proyectos
+          </h3>
+          <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 custom-scroll">
+            {projectOverview.map((p) => (
+              <ProjectCard
+                key={p.id}
+                name={p.name}
+                tasks={p.tasks}
+                colorIdx={getColorIndex(p.id)}
+                onClick={() => toggleProjectFilter(p.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Filters Bar ─────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Search (mobile) */}
+        <div className="relative w-full sm:w-auto sm:hidden">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+            search
+          </span>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar..."
+            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+          />
+        </div>
+
+        {/* Priority filter chips */}
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => setPriorityFilter(null)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              priorityFilter === null
+                ? "bg-primary text-white"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+            }`}
+          >
+            Todas
+          </button>
+          {[5, 4, 3, 2, 1].map((p) => {
+            const cfg = getPriorityConfig(p);
+            const active = priorityFilter === p;
+            return (
+              <button
+                key={p}
+                onClick={() => setPriorityFilter(active ? null : p)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  active
+                    ? PRIORITY_BG[p]
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                {cfg.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Project filter chips */}
+        {projects.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap">
+            {projects.map((p) => {
+              const active = projectFilters.has(p.id);
+              const color = TAG_COLORS[getColorIndex(p.id)];
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => toggleProjectFilter(p.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    active
+                      ? `${color.bg} ${color.text}`
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {p.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* User filter (admin only) */}
+        {role === "admin" && teamMembers.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap">
+            {teamMembers.map((m) => {
+              const active = userFilters.has(m.id);
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => toggleUserFilter(m.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <img
+                    src={m.avatar_url || "/logo.png"}
+                    className="w-4 h-4 rounded-full object-cover"
+                    alt=""
+                  />
+                  {m.full_name?.split(" ")[0] ?? "?"}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Priority Table (Desktop) ────────────────────────── */}
+      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
+              <th className="py-3 px-4 text-center w-12">#</th>
+              <th className="py-3 px-4 text-left">Tarea</th>
+              <th className="py-3 px-4 text-left">Proyecto</th>
+              <th className="py-3 px-4 text-left">Prioridad</th>
+              <th className="py-3 px-4 text-left">Fecha</th>
+              <th className="py-3 px-4 text-left">Responsable</th>
+              <th className="py-3 px-4 w-12"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayTasks.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <span className="material-symbols-outlined text-4xl mb-2 block">
+                    task_alt
+                  </span>
+                  {searchQuery || priorityFilter || projectFilters.size > 0
+                    ? "No hay tareas con estos filtros"
+                    : "No hay tareas pendientes"}
+                </td>
+              </tr>
+            ) : (
+              displayTasks.map((task, i) => (
+                <PriorityRow
+                  key={task.id}
+                  task={task}
+                  rank={i + 1}
+                  onPreview={openPreview}
+                  onComplete={handleComplete}
+                />
+              ))
+            )}
+          </tbody>
+        </table>
+
+        {/* View all toggle */}
+        {sortedTasks.length > 10 && (
+          <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 text-center">
+            <button
+              onClick={() => setViewAll((prev) => !prev)}
+              className="text-sm text-primary font-semibold hover:underline"
+            >
+              {viewAll
+                ? "Mostrar Top 10"
+                : `Ver todas (${sortedTasks.length})`}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Priority Cards (Mobile) ─────────────────────────── */}
+      <div className="md:hidden space-y-3">
+        {displayTasks.length === 0 ? (
+          <div className="py-12 text-center text-slate-400">
+            <span className="material-symbols-outlined text-4xl mb-2 block">
+              task_alt
+            </span>
+            {searchQuery || priorityFilter || projectFilters.size > 0
+              ? "No hay tareas con estos filtros"
+              : "No hay tareas pendientes"}
+          </div>
+        ) : (
+          displayTasks.map((task, i) => (
+            <PriorityCard
+              key={task.id}
+              task={task}
+              rank={i + 1}
+              onPreview={openPreview}
+              onComplete={handleComplete}
+            />
+          ))
+        )}
+
+        {sortedTasks.length > 10 && (
+          <button
+            onClick={() => setViewAll((prev) => !prev)}
+            className="w-full py-3 text-sm text-primary font-semibold hover:underline"
+          >
+            {viewAll
+              ? "Mostrar Top 10"
+              : `Ver todas (${sortedTasks.length})`}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

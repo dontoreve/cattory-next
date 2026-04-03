@@ -1,12 +1,226 @@
 "use client";
 
+import { useState, useMemo } from "react";
+import { useDashboard } from "@/contexts/DashboardContext";
+import { TAG_COLORS, getColorIndex } from "@/lib/utils/colors";
+import type { Task } from "@/lib/types";
+
+const MONTH_NAMES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+const DAY_HEADERS = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
+
+function dateToIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function CalendarPage() {
+  const { tasks, tasksLoading, openPreview } = useDashboard();
+
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  const todayIso = dateToIso(today);
+
+  // Group tasks by deadline date
+  const tasksByDate = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    for (const t of tasks) {
+      if (!t.deadline) continue;
+      const existing = map.get(t.deadline) ?? [];
+      existing.push(t);
+      map.set(t.deadline, existing);
+    }
+    return map;
+  }, [tasks]);
+
+  // Build calendar grid cells
+  const cells = useMemo(() => {
+    const firstDay = new Date(viewYear, viewMonth, 1);
+    const startOffset = firstDay.getDay(); // Sunday = 0
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    const result: { day: number; iso: string; current: boolean }[] = [];
+
+    // Previous month trailing
+    for (let i = startOffset - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const m = viewMonth === 0 ? 11 : viewMonth - 1;
+      const y = viewMonth === 0 ? viewYear - 1 : viewYear;
+      result.push({
+        day: d,
+        iso: `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+        current: false,
+      });
+    }
+
+    // Current month
+    for (let d = 1; d <= daysInMonth; d++) {
+      result.push({
+        day: d,
+        iso: `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+        current: true,
+      });
+    }
+
+    // Next month to fill 35 or 42 cells
+    const totalCells = result.length <= 35 ? 35 : 42;
+    const remaining = totalCells - result.length;
+    for (let d = 1; d <= remaining; d++) {
+      const m = viewMonth === 11 ? 0 : viewMonth + 1;
+      const y = viewMonth === 11 ? viewYear + 1 : viewYear;
+      result.push({
+        day: d,
+        iso: `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+        current: false,
+      });
+    }
+
+    return result;
+  }, [viewYear, viewMonth]);
+
+  function prevMonth() {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  }
+
+  function nextMonth() {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  }
+
+  function goToday() {
+    setViewYear(today.getFullYear());
+    setViewMonth(today.getMonth());
+  }
+
+  if (tasksLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">Calendario</h1>
-      <p className="mt-2 text-slate-500">
-        Vista de calendario — pendiente de migrar desde calendar.js
-      </p>
+    <div className="space-y-4">
+      {/* Navigation */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={prevMonth}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+          </button>
+          <h3 className="text-lg font-bold min-w-[180px] text-center">
+            {MONTH_NAMES[viewMonth]} {viewYear}
+          </h3>
+          <button
+            onClick={nextMonth}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+          </button>
+        </div>
+        <button
+          onClick={goToday}
+          className="px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/5 rounded-lg transition-colors"
+        >
+          Hoy
+        </button>
+      </div>
+
+      {/* Calendar grid */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+        {/* Day headers */}
+        <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-800">
+          {DAY_HEADERS.map((d) => (
+            <div
+              key={d}
+              className="py-2 text-center text-xs font-semibold text-slate-400 uppercase"
+            >
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div className="grid grid-cols-7">
+          {cells.map((cell, i) => {
+            const isToday = cell.iso === todayIso;
+            const dayTasks = tasksByDate.get(cell.iso) ?? [];
+
+            return (
+              <div
+                key={i}
+                className={`border-b border-r border-slate-100 dark:border-slate-800 p-1 md:p-2 min-h-[2.5rem] md:min-h-[8rem] ${
+                  !cell.current ? "bg-slate-50 dark:bg-slate-800/30" : ""
+                }`}
+              >
+                {/* Day number */}
+                <div className="flex items-center justify-between mb-0.5 md:mb-1">
+                  <span
+                    className={`text-xs md:text-sm font-semibold inline-flex items-center justify-center ${
+                      isToday
+                        ? "w-5 h-5 md:w-6 md:h-6 rounded-full bg-primary text-white"
+                        : cell.current
+                          ? "text-slate-700 dark:text-slate-300"
+                          : "text-slate-300 dark:text-slate-600"
+                    }`}
+                  >
+                    {cell.day}
+                  </span>
+                </div>
+
+                {/* Task pills */}
+                <div className="space-y-0.5 md:space-y-1">
+                  {dayTasks.slice(0, 3).map((task) => {
+                    const isDone = task.status === "done";
+                    const color =
+                      TAG_COLORS[
+                        getColorIndex(task.project_id ?? task.id)
+                      ];
+
+                    return (
+                      <button
+                        key={task.id}
+                        onClick={() => openPreview(task)}
+                        className={`w-full text-left px-1 md:px-1.5 py-0.5 rounded text-[8px] md:text-[10px] font-medium truncate transition-colors ${
+                          isDone
+                            ? "bg-slate-100 dark:bg-slate-800 text-slate-400 line-through"
+                            : `${color.bg} ${color.text} hover:ring-1 ${color.ring}`
+                        }`}
+                      >
+                        {task.title}
+                      </button>
+                    );
+                  })}
+                  {dayTasks.length > 3 && (
+                    <span className="text-[9px] text-slate-400 font-medium px-1">
+                      +{dayTasks.length - 3} mas
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
