@@ -1,11 +1,111 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { getPriorityConfig } from "@/lib/utils/priority";
 import { TAG_COLORS, getColorIndex } from "@/lib/utils/colors";
 import { formatDate } from "@/lib/utils/dates";
 import type { Task } from "@/lib/types";
+
+const PRIORITY_LABELS: Record<number, string> = {
+  5: "CRITICA", 4: "ALTA", 3: "MEDIA", 2: "BAJA", 1: "RUTINA",
+};
+
+function CalendarTooltip({ task, anchorRect }: { task: Task; anchorRect: DOMRect }) {
+  const pc = getPriorityConfig(task.priority);
+  const isDone = task.status === "done";
+  const completedDateStr = isDone && task.completed_at
+    ? formatDate(task.completed_at.slice(0, 10))
+    : null;
+
+  // Position: prefer below, but flip above if near bottom of viewport
+  const top = anchorRect.bottom + 4;
+  const flipUp = top + 220 > window.innerHeight;
+  const style: React.CSSProperties = {
+    position: "fixed",
+    left: Math.min(anchorRect.left, window.innerWidth - 260),
+    top: flipUp ? anchorRect.top - 4 : top,
+    transform: flipUp ? "translateY(-100%)" : undefined,
+    zIndex: 9999,
+  };
+
+  return createPortal(
+    <div
+      style={style}
+      className="w-60 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 pointer-events-none"
+    >
+      <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-3 line-clamp-2">
+        {task.title}
+      </h4>
+
+      {isDone && (
+        <div className="flex items-center gap-1.5 mb-3 px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+          <span className="material-symbols-outlined text-emerald-500 text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+            check_circle
+          </span>
+          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+            Completada {completedDateStr}
+          </span>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <div className="flex justify-between items-center text-[11px]">
+          <span className="text-slate-400">Prioridad</span>
+          <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded font-bold uppercase">
+            {PRIORITY_LABELS[task.priority] ?? "MEDIA"}
+          </span>
+        </div>
+        <div className="flex justify-between items-center text-[11px]">
+          <span className="text-slate-400">Proyecto</span>
+          <span className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[100px]">
+            {task.projects?.name ?? "Sin proyecto"}
+          </span>
+        </div>
+        <div className="flex justify-between items-center text-[11px]">
+          <span className="text-slate-400">Responsable</span>
+          <div className="flex items-center gap-1.5">
+            {task.profiles?.avatar_url ? (
+              <img src={task.profiles.avatar_url} className="w-4 h-4 rounded-full object-cover" alt="" />
+            ) : (
+              <div className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-bold text-slate-500">
+                {task.profiles?.full_name?.charAt(0) ?? "?"}
+              </div>
+            )}
+            <span className="text-slate-700 dark:text-slate-300 truncate max-w-[80px]">
+              {task.profiles?.full_name ?? "Sin asignar"}
+            </span>
+          </div>
+        </div>
+        {task.secondary_profile?.full_name && (
+          <div className="flex justify-between items-center text-[11px]">
+            <span className="text-slate-400">2da Persona</span>
+            <div className="flex items-center gap-1.5">
+              {task.secondary_profile.avatar_url ? (
+                <img src={task.secondary_profile.avatar_url} className="w-4 h-4 rounded-full object-cover" alt="" />
+              ) : (
+                <div className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-bold text-slate-500">
+                  {task.secondary_profile.full_name.charAt(0)}
+                </div>
+              )}
+              <span className="text-slate-700 dark:text-slate-300 truncate max-w-[80px]">
+                {task.secondary_profile.full_name}
+              </span>
+            </div>
+          </div>
+        )}
+        <div className="flex justify-between items-center text-[11px]">
+          <span className="text-slate-400">Fecha Limite</span>
+          <span className="text-slate-700 dark:text-slate-300 font-medium">
+            {task.deadline ? formatDate(task.deadline) : "Sin fecha"}
+          </span>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 const MONTH_NAMES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -22,6 +122,7 @@ function dateToIso(d: Date): string {
 
 export default function CalendarPage() {
   const { tasks, tasksLoading, openPreview } = useDashboard();
+  const [hoveredTask, setHoveredTask] = useState<{ task: Task; rect: DOMRect } | null>(null);
 
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -197,45 +298,42 @@ export default function CalendarPage() {
                       TAG_COLORS[
                         getColorIndex(task.project_id ?? task.id)
                       ];
-                    const pc = getPriorityConfig(task.priority);
 
                     return (
-                      <div key={task.id} className="relative group/tip">
-                        <button
-                          onClick={() => openPreview(task)}
-                          className={`w-full text-left px-1 md:px-1.5 py-0.5 rounded text-[8px] md:text-[10px] font-medium truncate transition-colors ${
-                            isDone
-                              ? "bg-slate-100 dark:bg-slate-800 text-slate-400 line-through"
-                              : `${color.bg} ${color.text} hover:ring-1 ${color.ring}`
-                          }`}
-                        >
-                          {task.title}
-                        </button>
-                        {/* Hover tooltip */}
-                        <div className="hidden group-hover/tip:block absolute left-0 bottom-full mb-1 z-50 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-3 text-xs pointer-events-none">
-                          <p className="font-bold text-slate-800 dark:text-slate-200 mb-1.5 leading-tight">{task.title}</p>
-                          <div className="space-y-1 text-slate-500">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`} />
-                              <span>{pc.label}</span>
-                              <span className="mx-1">·</span>
-                              <span>{isDone ? "Completada" : task.status === "in-progress" ? "En Progreso" : "Por Hacer"}</span>
-                            </div>
-                            {task.projects?.name && (
-                              <p><span className="text-slate-400">Proyecto:</span> {task.projects.name}</p>
-                            )}
-                            {task.profiles?.full_name && (
-                              <p><span className="text-slate-400">Responsable:</span> {task.profiles.full_name}</p>
-                            )}
-                            {task.deadline && (
-                              <p><span className="text-slate-400">Deadline:</span> {formatDate(task.deadline)}</p>
-                            )}
-                            {isDone && task.completed_at && (
-                              <p><span className="text-slate-400">Completada:</span> {formatDate(task.completed_at.slice(0, 10))}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      <button
+                        key={task.id}
+                        onClick={() => openPreview(task)}
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setHoveredTask({ task, rect });
+                        }}
+                        onMouseLeave={() => setHoveredTask(null)}
+                        className={`hidden md:block w-full text-left px-1.5 py-0.5 rounded text-[10px] font-medium truncate transition-colors ${
+                          isDone
+                            ? "bg-slate-100 dark:bg-slate-800 text-slate-400 line-through"
+                            : `${color.bg} ${color.text} hover:ring-1 ${color.ring}`
+                        }`}
+                      >
+                        {task.title}
+                      </button>
+                    );
+                  })}
+                  {/* Mobile pills (no hover) */}
+                  {dayTasks.slice(0, 3).map((task) => {
+                    const isDone = task.status === "done";
+                    const color = TAG_COLORS[getColorIndex(task.project_id ?? task.id)];
+                    return (
+                      <button
+                        key={`m-${task.id}`}
+                        onClick={() => openPreview(task)}
+                        className={`md:hidden w-full text-left px-1 py-0.5 rounded text-[8px] font-medium truncate ${
+                          isDone
+                            ? "bg-slate-100 text-slate-400 line-through"
+                            : `${color.bg} ${color.text}`
+                        }`}
+                      >
+                        {task.title}
+                      </button>
                     );
                   })}
                   {dayTasks.length > 3 && (
@@ -249,6 +347,11 @@ export default function CalendarPage() {
           })}
         </div>
       </div>
+
+      {/* Hover tooltip via portal */}
+      {hoveredTask && (
+        <CalendarTooltip task={hoveredTask.task} anchorRect={hoveredTask.rect} />
+      )}
     </div>
   );
 }

@@ -72,7 +72,6 @@ function KanbanCard({
           className={`task-card bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 cursor-pointer ${
             snapshot.isDragging ? "shadow-lg ring-2 ring-primary/30" : ""
           }`}
-          style={snapshot.isDragging ? { transition: "box-shadow 0.2s" } : undefined}
           onClick={() => onPreview(task)}
         >
           {/* Priority badge */}

@@ -124,31 +124,36 @@ function PriorityRow({
   task,
   rank,
   onPreview,
+  onEdit,
   onComplete,
 }: {
   task: Task;
   rank: number;
   onPreview: (t: Task) => void;
+  onEdit: (t: Task) => void;
   onComplete: (t: Task, el?: HTMLElement) => void;
 }) {
   const pc = getPriorityConfig(task.priority);
   const pb = PRIORITY_BG[task.priority] ?? "";
   const overdue = isOverdue(task.deadline);
+  const color = task.project_id
+    ? TAG_COLORS[getColorIndex(task.project_id)]
+    : null;
 
   return (
     <tr
-      className="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+      className="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-50"
       style={{ animation: "rowSlideIn 0.3s ease-out" }}
       onClick={() => onPreview(task)}
     >
       {/* Rank */}
-      <td className="py-3 px-4 text-center">
+      <td className="py-3 px-3 text-center w-12">
         <span
           className={`font-black ${
             rank === 1
-              ? "text-xl text-primary"
+              ? "text-lg text-primary"
               : rank <= 3
-                ? "text-base text-slate-700 dark:text-slate-300"
+                ? "text-base text-slate-700"
                 : "text-sm text-slate-400"
           }`}
         >
@@ -156,21 +161,23 @@ function PriorityRow({
         </span>
       </td>
       {/* Title */}
-      <td className="py-3 px-4">
-        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate max-w-xs">
+      <td className="py-3 px-3">
+        <p className="text-sm font-semibold text-slate-800 truncate">
           {task.title}
         </p>
       </td>
       {/* Project */}
-      <td className="py-3 px-4">
-        {task.projects?.name && (
-          <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">
+      <td className="py-3 px-3">
+        {task.projects?.name && color ? (
+          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${color.bg} ${color.text}`}>
             {task.projects.name}
           </span>
+        ) : (
+          <span className="text-xs text-slate-300">—</span>
         )}
       </td>
       {/* Priority */}
-      <td className="py-3 px-4">
+      <td className="py-3 px-3">
         <span
           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${pb}`}
         >
@@ -179,13 +186,14 @@ function PriorityRow({
         </span>
       </td>
       {/* Deadline */}
-      <td className="py-3 px-4">
+      <td className="py-3 px-3">
         {task.deadline ? (
           <span
             className={`text-xs font-medium ${
               overdue ? "text-red-500" : "text-slate-500"
             }`}
           >
+            {overdue && <span className="inline-block mr-0.5">⚠</span>}
             {formatDate(task.deadline)}
           </span>
         ) : (
@@ -193,25 +201,38 @@ function PriorityRow({
         )}
       </td>
       {/* Assignee */}
-      <td className="py-3 px-4">
-        <span className="text-xs text-slate-500 truncate block max-w-[120px]">
-          {task.profiles?.full_name ?? "—"}
-        </span>
+      <td className="py-3 px-3">
+        <div className="flex items-center gap-1.5">
+          {task.profiles?.avatar_url ? (
+            <img src={task.profiles.avatar_url} className="w-5 h-5 rounded-full object-cover" alt="" />
+          ) : (
+            <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-500">
+              {task.profiles?.full_name?.charAt(0) ?? "?"}
+            </div>
+          )}
+          <span className="text-xs text-slate-600 truncate max-w-[80px]">
+            {task.profiles?.full_name ?? "—"}
+          </span>
+        </div>
       </td>
       {/* Actions */}
-      <td className="py-3 px-4">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onComplete(task, e.currentTarget);
-          }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg"
-          title="Completar"
-        >
-          <span className="material-symbols-outlined text-emerald-500 text-[20px]">
-            check_circle
-          </span>
-        </button>
+      <td className="py-3 px-3">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+            className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+            title="Editar"
+          >
+            <span className="material-symbols-outlined text-slate-400 text-[18px]">edit</span>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onComplete(task, e.currentTarget); }}
+            className="p-1 hover:bg-emerald-50 rounded-lg transition-colors"
+            title="Completar"
+          >
+            <span className="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -519,17 +540,26 @@ export default function PriorityPage() {
       </div>
 
       {/* ── Priority Table (Desktop) ────────────────────────── */}
-      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-x-auto">
-        <table className="w-full min-w-[700px]">
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-12" />
+            <col />
+            <col className="w-[120px]" />
+            <col className="w-[110px]" />
+            <col className="w-[140px]" />
+            <col className="w-[130px]" />
+            <col className="w-[80px]" />
+          </colgroup>
           <thead>
-            <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
-              <th className="py-3 px-4 text-center w-12">#</th>
-              <th className="py-3 px-4 text-left">Tarea</th>
-              <th className="py-3 px-4 text-left">Proyecto</th>
-              <th className="py-3 px-4 text-left">Prioridad</th>
-              <th className="py-3 px-4 text-left">Fecha</th>
-              <th className="py-3 px-4 text-left">Responsable</th>
-              <th className="py-3 px-4 w-12"></th>
+            <tr className="border-b border-slate-100 text-xs text-slate-400 uppercase tracking-wider">
+              <th className="py-3 px-3 text-center">#</th>
+              <th className="py-3 px-3 text-left">Tarea</th>
+              <th className="py-3 px-3 text-left">Proyecto</th>
+              <th className="py-3 px-3 text-left">Prioridad</th>
+              <th className="py-3 px-3 text-left">Fecha Limite</th>
+              <th className="py-3 px-3 text-left">Responsable</th>
+              <th className="py-3 px-3 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -551,6 +581,7 @@ export default function PriorityPage() {
                   task={task}
                   rank={i + 1}
                   onPreview={openPreview}
+                  onEdit={openTaskModal}
                   onComplete={handleComplete}
                 />
               ))
