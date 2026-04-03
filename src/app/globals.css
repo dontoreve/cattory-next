@@ -108,6 +108,11 @@ html, body {
   100% { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes slide-down {
+  0%   { transform: translateY(-1.5rem); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
 /* ── P5 Critical pulse ───────────────────────────────────────── */
 @keyframes urgentPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, type FormEvent } from "react";
 import CustomSelect, { type SelectOption } from "@/components/ui/CustomSelect";
 import DatePicker from "@/components/ui/DatePicker";
+import { TAG_COLORS } from "@/lib/utils/colors";
 import type { Task, TaskLink, Profile, Project } from "@/lib/types";
 
 const STATUS_OPTIONS: SelectOption[] = [
@@ -282,30 +283,68 @@ export default function TaskModal({
 
             {/* Fields grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Responsible */}
-              <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                  Responsable
+              {/* Team — avatar toggle picker */}
+              <div className="sm:col-span-2">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">
+                  Equipo
                 </label>
-                <CustomSelect
-                  value={responsibleId}
-                  onChange={setResponsibleId}
-                  options={memberOptions}
-                  placeholder="Seleccionar"
-                />
-              </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {teamMembers.map((m, idx) => {
+                    const name = m.full_name ?? "Usuario";
+                    const parts = name.split(" ");
+                    const initials = parts.length > 1
+                      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                      : name.substring(0, 2).toUpperCase();
+                    const color = TAG_COLORS[(idx + 3) % TAG_COLORS.length];
+                    const isPrimary = m.id === responsibleId;
+                    const isSecondary = m.id === secondaryId;
+                    const isSelected = isPrimary || isSecondary;
 
-              {/* Secondary responsible */}
-              <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
-                  Apoyo
-                </label>
-                <CustomSelect
-                  value={secondaryId}
-                  onChange={setSecondaryId}
-                  options={secondaryOptions}
-                  placeholder="Ninguna"
-                />
+                    const ringClass = isPrimary
+                      ? "ring-[3px] ring-primary ring-offset-2 dark:ring-offset-slate-900"
+                      : isSecondary
+                      ? "ring-[3px] ring-slate-400 dark:ring-slate-500 ring-offset-2 dark:ring-offset-slate-900"
+                      : "hover:ring-2 hover:ring-slate-300 dark:hover:ring-slate-600 hover:ring-offset-1";
+
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        title={name + (isPrimary ? " (Principal)" : isSecondary ? " (Apoyo)" : "")}
+                        className={`size-9 rounded-full flex items-center justify-center text-[12px] font-bold cursor-pointer transition-all duration-200 active:scale-90 shadow-sm ${color.bg} ${color.text} ${ringClass} ${!isSelected ? "opacity-50 hover:opacity-100" : ""}`}
+                        onClick={() => {
+                          if (m.id === responsibleId) {
+                            // Deselect primary → promote secondary
+                            setResponsibleId(secondaryId || "");
+                            setSecondaryId("");
+                          } else if (m.id === secondaryId) {
+                            // Deselect secondary
+                            setSecondaryId("");
+                          } else if (!responsibleId) {
+                            setResponsibleId(m.id);
+                          } else if (!secondaryId) {
+                            setSecondaryId(m.id);
+                          } else {
+                            // Both full → replace secondary
+                            setSecondaryId(m.id);
+                          }
+                        }}
+                      >
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} className="size-9 rounded-full object-cover" alt="" />
+                        ) : initials}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-400 dark:text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block size-2.5 rounded-full bg-primary" /> Principal
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block size-2.5 rounded-full bg-slate-400" /> Apoyo
+                  </span>
+                </div>
               </div>
 
               {/* Project */}

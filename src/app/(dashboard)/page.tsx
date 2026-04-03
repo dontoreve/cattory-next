@@ -21,16 +21,36 @@ function useDragScroll() {
     const el = ref.current;
     if (!el) return;
 
-    const c = el; // non-null alias for closures
+    const c = el;
     let isDown = false;
+    let hasDragged = false;
     let startX = 0;
     let scrollLeft = 0;
     let lastX = 0;
     let velocity = 0;
     let momentumId = 0;
 
+    function stopDrag() {
+      if (!isDown) return;
+      isDown = false;
+      c.style.cursor = "";
+      c.style.userSelect = "";
+      if (Math.abs(velocity) > 1) {
+        let vel = -velocity * 1.4;
+        function momentum() {
+          if (Math.abs(vel) > 0.4) {
+            c.scrollLeft += vel;
+            vel *= 0.88;
+            momentumId = requestAnimationFrame(momentum);
+          }
+        }
+        momentum();
+      }
+    }
+
     function onMouseDown(e: MouseEvent) {
       isDown = true;
+      hasDragged = false;
       c.style.cursor = "grabbing";
       c.style.userSelect = "none";
       startX = e.clientX;
@@ -40,31 +60,30 @@ function useDragScroll() {
       cancelAnimationFrame(momentumId);
     }
 
-    function onMouseUp() {
-      if (!isDown) return;
-      isDown = false;
-      c.style.cursor = "";
-      c.style.userSelect = "";
-      let vel = -velocity * 1.4;
-      function momentum() {
-        if (Math.abs(vel) > 0.4) {
-          c.scrollLeft += vel;
-          vel *= 0.88;
-          momentumId = requestAnimationFrame(momentum);
-        }
-      }
-      momentum();
-    }
-
     function onMouseMove(e: MouseEvent) {
       if (!isDown) return;
+      const dx = e.clientX - startX;
+      // 3px deadzone to distinguish click from drag
+      if (!hasDragged && Math.abs(dx) < 3) return;
+      hasDragged = true;
       e.preventDefault();
       velocity = e.clientX - lastX;
       lastX = e.clientX;
-      c.scrollLeft = scrollLeft - (e.clientX - startX) * 1.5;
+      c.scrollLeft = scrollLeft - dx * 1.5;
+    }
+
+    // Suppress click on cards after drag
+    function onClick(e: MouseEvent) {
+      if (hasDragged) {
+        e.stopPropagation();
+        e.preventDefault();
+        hasDragged = false;
+      }
     }
 
     function onWheel(e: WheelEvent) {
+      // Only hijack if container is scrollable
+      if (c.scrollWidth <= c.clientWidth) return;
       e.preventDefault();
       cancelAnimationFrame(momentumId);
       const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -72,17 +91,22 @@ function useDragScroll() {
     }
 
     c.addEventListener("mousedown", onMouseDown);
-    c.addEventListener("mouseleave", onMouseUp);
-    c.addEventListener("mouseup", onMouseUp);
+    c.addEventListener("mouseleave", stopDrag);
+    c.addEventListener("mouseup", stopDrag);
     c.addEventListener("mousemove", onMouseMove);
+    c.addEventListener("click", onClick, true);
     c.addEventListener("wheel", onWheel, { passive: false });
+    // Catch mouseup outside container
+    window.addEventListener("mouseup", stopDrag);
 
     return () => {
       c.removeEventListener("mousedown", onMouseDown);
-      c.removeEventListener("mouseleave", onMouseUp);
-      c.removeEventListener("mouseup", onMouseUp);
+      c.removeEventListener("mouseleave", stopDrag);
+      c.removeEventListener("mouseup", stopDrag);
       c.removeEventListener("mousemove", onMouseMove);
+      c.removeEventListener("click", onClick, true);
       c.removeEventListener("wheel", onWheel);
+      window.removeEventListener("mouseup", stopDrag);
       cancelAnimationFrame(momentumId);
     };
   }, []);
@@ -445,60 +469,60 @@ function PriorityRow({
           placeholder="Sin fecha"
         />
       </td>
-      {/* Assignee — clickable primary + secondary */}
+      {/* Assignee — avatar circles */}
       <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2.5">
           {/* Primary */}
-          <div
-            className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded-full pr-3 border border-slate-100/50 cursor-pointer hover:ring-2 hover:ring-slate-200 transition-all"
-            onClick={(e) => {
-              setAnchorRect(e.currentTarget.getBoundingClientRect());
-              setOpenDropdown("assignee-primary");
-            }}
-            title="Cambiar responsable"
-          >
-            {task.profiles?.avatar_url ? (
-              <img src={task.profiles.avatar_url} className="size-5 rounded-full object-cover" alt="" />
-            ) : (
-              <div className="size-5 rounded-full bg-white flex items-center justify-center text-[10px] font-bold shadow-sm">
-                {(task.profiles?.full_name ?? "?").substring(0, 2).toUpperCase()}
+          {(() => {
+            const name = task.profiles?.full_name ?? "?";
+            const initials = name.length > 1 ? name.substring(0, 2).toUpperCase() : "??";
+            const cIdx = teamMembers.findIndex((m) => m.id === task.responsible_id);
+            const c = TAG_COLORS[(cIdx + 3) % TAG_COLORS.length] ?? TAG_COLORS[0];
+            return (
+              <div
+                className={`size-8 rounded-full flex items-center justify-center text-[11px] font-bold cursor-pointer hover:ring-2 hover:ring-primary/40 hover:scale-110 transition-all shadow-sm ${c.bg} ${c.text}`}
+                onClick={(e) => {
+                  setAnchorRect(e.currentTarget.getBoundingClientRect());
+                  setOpenDropdown("assignee-primary");
+                }}
+                title={name}
+              >
+                {task.profiles?.avatar_url ? (
+                  <img src={task.profiles.avatar_url} className="size-8 rounded-full object-cover" alt="" />
+                ) : initials}
               </div>
-            )}
-            <span className="text-xs font-bold whitespace-nowrap">
-              {task.profiles?.full_name ?? "—"}
-            </span>
-          </div>
+            );
+          })()}
           {/* Secondary */}
-          {task.secondary_responsible_id && task.secondary_profile ? (
-            <div
-              className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded-full pr-3 border border-slate-100/50 cursor-pointer hover:ring-2 hover:ring-slate-200 transition-all"
-              onClick={(e) => {
-                setAnchorRect(e.currentTarget.getBoundingClientRect());
-                setOpenDropdown("assignee-secondary");
-              }}
-              title="Cambiar 2da persona"
-            >
-              {task.secondary_profile.avatar_url ? (
-                <img src={task.secondary_profile.avatar_url} className="size-5 rounded-full object-cover" alt="" />
-              ) : (
-                <div className="size-5 rounded-full bg-white flex items-center justify-center text-[10px] font-bold shadow-sm">
-                  {(task.secondary_profile.full_name ?? "?").substring(0, 2).toUpperCase()}
-                </div>
-              )}
-              <span className="text-xs font-bold whitespace-nowrap">
-                {task.secondary_profile.full_name}
-              </span>
-            </div>
-          ) : (
+          {task.secondary_responsible_id && task.secondary_profile ? (() => {
+            const name = task.secondary_profile.full_name ?? "?";
+            const initials = name.length > 1 ? name.substring(0, 2).toUpperCase() : "??";
+            const cIdx = teamMembers.findIndex((m) => m.id === task.secondary_responsible_id);
+            const c = TAG_COLORS[(cIdx + 3) % TAG_COLORS.length] ?? TAG_COLORS[0];
+            return (
+              <div
+                className={`size-8 rounded-full flex items-center justify-center text-[11px] font-bold cursor-pointer hover:ring-2 hover:ring-primary/40 hover:scale-110 transition-all shadow-sm ${c.bg} ${c.text}`}
+                onClick={(e) => {
+                  setAnchorRect(e.currentTarget.getBoundingClientRect());
+                  setOpenDropdown("assignee-secondary");
+                }}
+                title={name}
+              >
+                {task.secondary_profile.avatar_url ? (
+                  <img src={task.secondary_profile.avatar_url} className="size-8 rounded-full object-cover" alt="" />
+                ) : initials}
+              </div>
+            );
+          })() : (
             <button
-              className="size-6 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-primary hover:text-primary transition-all cursor-pointer"
+              className="size-8 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-primary hover:text-primary hover:scale-110 transition-all cursor-pointer"
               onClick={(e) => {
                 setAnchorRect(e.currentTarget.getBoundingClientRect());
                 setOpenDropdown("assignee-secondary");
               }}
               title="Agregar 2da persona"
             >
-              <span className="material-symbols-outlined text-[12px]">add</span>
+              <span className="material-symbols-outlined text-[14px]">add</span>
             </button>
           )}
           {/* Assignee dropdown */}
@@ -623,18 +647,18 @@ function PriorityCard({
             {formatDate(task.deadline)}
           </span>
         )}
-        {task.profiles?.full_name && (
-          <div className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
-            {task.profiles?.avatar_url ? (
-              <img src={task.profiles.avatar_url} className="size-4 rounded-full object-cover" alt="" />
-            ) : (
-              <div className="size-4 rounded-full bg-white flex items-center justify-center text-[9px] font-bold shadow-sm">
-                {task.profiles.full_name.substring(0, 2).toUpperCase()}
-              </div>
-            )}
-            {task.profiles.full_name}
-          </div>
-        )}
+        {task.profiles?.full_name && (() => {
+          const cIdx = 3; // fallback color index for mobile card
+          const c = TAG_COLORS[(cIdx + 3) % TAG_COLORS.length] ?? TAG_COLORS[0];
+          const initials = task.profiles.full_name.substring(0, 2).toUpperCase();
+          return (
+            <div className={`size-7 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm ${c.bg} ${c.text}`} title={task.profiles.full_name}>
+              {task.profiles.avatar_url ? (
+                <img src={task.profiles.avatar_url} className="size-7 rounded-full object-cover" alt="" />
+              ) : initials}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

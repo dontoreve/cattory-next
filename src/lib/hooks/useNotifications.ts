@@ -23,7 +23,10 @@ export function useNotifications({ userId, role }: UseNotificationsOptions) {
       .eq("is_read", false)
       .order("created_at", { ascending: false })
       .limit(30);
-    if (data) setNotifications(data as Notification[]);
+    if (data) {
+      console.log(`[notifications] ${data.length} unread notifications loaded`);
+      setNotifications(data as Notification[]);
+    }
     setLoading(false);
   }, [userId]);
 
@@ -33,10 +36,11 @@ export function useNotifications({ userId, role }: UseNotificationsOptions) {
 
     async function init() {
       // Server-side overdue check
-      await supabase.rpc("check_overdue_notifications", {
+      const { error: rpcErr } = await supabase.rpc("check_overdue_notifications", {
         p_user_id: userId,
         p_is_admin: role === "admin",
       });
+      if (rpcErr) console.warn("[notifications] check_overdue RPC failed:", rpcErr.message);
       await fetchNotifications();
     }
     init();
@@ -70,7 +74,9 @@ export function useNotifications({ userId, role }: UseNotificationsOptions) {
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[notifications] realtime subscription:", status);
+      });
 
     channelRef.current = channel;
 
