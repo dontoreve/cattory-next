@@ -2,6 +2,8 @@
 
 import { useState, useEffect, type FormEvent } from "react";
 import CustomSelect from "@/components/ui/CustomSelect";
+import DatePicker from "@/components/ui/DatePicker";
+import { TAG_COLORS } from "@/lib/utils/colors";
 import type { Profile, Project } from "@/lib/types";
 import type { RecurringTemplate } from "@/lib/hooks/useRecurringTasks";
 
@@ -131,7 +133,6 @@ export default function RecurringModal({
     try { await onDelete(); } finally { setDeleting(false); }
   }
 
-  const memberOptions = teamMembers.map((m) => ({ value: m.id, label: m.full_name ?? "Sin nombre" }));
   const projectOptions = [
     { value: "", label: "Sin proyecto" },
     ...projects.map((p) => ({ value: p.id, label: p.name })),
@@ -198,13 +199,61 @@ export default function RecurringModal({
 
             {/* Fields grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Responsable</label>
-                <CustomSelect value={responsibleId} onChange={setResponsibleId} options={memberOptions} />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Apoyo</label>
-                <CustomSelect value={secondaryId} onChange={setSecondaryId} options={[{ value: "", label: "Ninguna" }, ...memberOptions]} />
+              {/* Team — avatar toggle picker */}
+              <div className="sm:col-span-2">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Equipo</label>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {teamMembers.map((m, idx) => {
+                    const name = m.full_name ?? "Usuario";
+                    const parts = name.split(" ");
+                    const initials = parts.length > 1
+                      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+                      : name.substring(0, 2).toUpperCase();
+                    const color = TAG_COLORS[(idx + 3) % TAG_COLORS.length];
+                    const isPrimary = m.id === responsibleId;
+                    const isSecondary = m.id === secondaryId;
+                    const isSelected = isPrimary || isSecondary;
+                    const ringClass = isPrimary
+                      ? "ring-[3px] ring-primary ring-offset-2"
+                      : isSecondary
+                      ? "ring-[3px] ring-slate-400 ring-offset-2"
+                      : "hover:ring-2 hover:ring-slate-300 hover:ring-offset-1";
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        title={name + (isPrimary ? " (Principal)" : isSecondary ? " (Apoyo)" : "")}
+                        className={`size-9 rounded-full flex items-center justify-center text-[12px] font-bold cursor-pointer transition-all duration-200 active:scale-90 shadow-sm ${color.bg} ${color.text} ${ringClass} ${!isSelected ? "opacity-50 hover:opacity-100" : ""}`}
+                        onClick={() => {
+                          if (m.id === responsibleId) {
+                            setResponsibleId(secondaryId || "");
+                            setSecondaryId("");
+                          } else if (m.id === secondaryId) {
+                            setSecondaryId("");
+                          } else if (!responsibleId) {
+                            setResponsibleId(m.id);
+                          } else if (!secondaryId) {
+                            setSecondaryId(m.id);
+                          } else {
+                            setSecondaryId(m.id);
+                          }
+                        }}
+                      >
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} className="size-9 rounded-full object-cover" alt="" />
+                        ) : initials}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block size-2.5 rounded-full bg-primary" /> Principal
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block size-2.5 rounded-full bg-slate-400" /> Apoyo
+                  </span>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Proyecto</label>
@@ -218,8 +267,7 @@ export default function RecurringModal({
 
             <div>
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">Repetir hasta (opcional)</label>
-              <input type="date" value={repeatUntil} onChange={(e) => setRepeatUntil(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm" />
+              <DatePicker value={repeatUntil} onChange={setRepeatUntil} mode="click" placeholder="Sin fecha límite" />
             </div>
           </div>
 

@@ -66,13 +66,7 @@ function CalendarTooltip({ task, anchorRect }: { task: Task; anchorRect: DOMRect
         <div className="flex justify-between items-center text-[11px]">
           <span className="text-slate-400">Responsable</span>
           <div className="flex items-center gap-1.5">
-            {task.profiles?.avatar_url ? (
-              <img src={task.profiles.avatar_url} className="w-4 h-4 rounded-full object-cover" alt="" />
-            ) : (
-              <div className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-bold text-slate-500">
-                {task.profiles?.full_name?.charAt(0) ?? "?"}
-              </div>
-            )}
+            <img src={task.profiles?.avatar_url || "/logo.png"} className="w-4 h-4 rounded-full object-cover" alt="" />
             <span className="text-slate-700 dark:text-slate-300 truncate max-w-[80px]">
               {task.profiles?.full_name ?? "Sin asignar"}
             </span>
@@ -82,13 +76,7 @@ function CalendarTooltip({ task, anchorRect }: { task: Task; anchorRect: DOMRect
           <div className="flex justify-between items-center text-[11px]">
             <span className="text-slate-400">2da Persona</span>
             <div className="flex items-center gap-1.5">
-              {task.secondary_profile.avatar_url ? (
-                <img src={task.secondary_profile.avatar_url} className="w-4 h-4 rounded-full object-cover" alt="" />
-              ) : (
-                <div className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-bold text-slate-500">
-                  {task.secondary_profile.full_name.charAt(0)}
-                </div>
-              )}
+              <img src={task.secondary_profile.avatar_url || "/logo.png"} className="w-4 h-4 rounded-full object-cover" alt="" />
               <span className="text-slate-700 dark:text-slate-300 truncate max-w-[80px]">
                 {task.secondary_profile.full_name}
               </span>

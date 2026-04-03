@@ -234,17 +234,11 @@ export default function BacklogPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        {task.profiles?.avatar_url ? (
-                          <img
-                            src={task.profiles.avatar_url}
+                        <img
+                            src={task.profiles?.avatar_url || "/logo.png"}
                             className="w-6 h-6 rounded-full object-cover"
                             alt=""
                           />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                            {task.profiles?.full_name?.charAt(0) ?? "?"}
-                          </div>
-                        )}
                         <span className="text-xs text-slate-500 truncate max-w-[100px]">
                           {task.profiles?.full_name ?? "—"}
                         </span>

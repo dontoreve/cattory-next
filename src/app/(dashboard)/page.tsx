@@ -241,13 +241,7 @@ function InlineAssigneeDropdown({
             onMouseDown={(e) => { e.preventDefault(); onSelect(m.id); }}
             className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold transition-colors hover:bg-slate-50 ${isActive ? "bg-slate-100 text-primary" : "text-slate-700"}`}
           >
-            {m.avatar_url ? (
-              <img src={m.avatar_url} className="size-5 rounded-full object-cover" alt="" />
-            ) : (
-              <div className="size-5 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-500">
-                {(m.full_name ?? "?").substring(0, 2).toUpperCase()}
-              </div>
-            )}
+            <img src={m.avatar_url || "/logo.png"} className="size-5 rounded-full object-cover" alt="" />
             <span className="truncate">{m.full_name ?? "Sin nombre"}</span>
             {isActive && <span className="material-symbols-outlined text-[14px] ml-auto">check</span>}
           </button>
@@ -437,10 +431,11 @@ function PriorityRow({
         )}
       </td>
       {/* Priority — clickable */}
-      <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
+      <td className="px-3 py-4">
         <span
           className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold whitespace-nowrap cursor-pointer hover:ring-2 hover:ring-slate-200 transition-all ${pb}`}
           onClick={(e) => {
+            e.stopPropagation();
             setAnchorRect(e.currentTarget.getBoundingClientRect());
             setOpenDropdown("priority");
           }}
@@ -459,18 +454,20 @@ function PriorityRow({
         )}
       </td>
       {/* Deadline — inline DatePicker */}
-      <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
-        <DatePicker
-          value={task.deadline ?? ""}
-          onChange={async (newDate) => { await onUpdateTask(task.id, { deadline: newDate || null }); }}
-          mode="click"
-          variant="inline"
-          overdue={overdue}
-          placeholder="Sin fecha"
-        />
+      <td className="px-3 py-4">
+        <div onClick={(e) => e.stopPropagation()}>
+          <DatePicker
+            value={task.deadline ?? ""}
+            onChange={async (newDate) => { await onUpdateTask(task.id, { deadline: newDate || null }); }}
+            mode="click"
+            variant="inline"
+            overdue={overdue}
+            placeholder="Sin fecha"
+          />
+        </div>
       </td>
       {/* Assignee — avatar circles */}
-      <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
+      <td className="px-3 py-4">
         <div className="flex items-center gap-2.5">
           {/* Primary */}
           {(() => {
@@ -482,14 +479,13 @@ function PriorityRow({
               <div
                 className={`size-8 rounded-full flex items-center justify-center text-[11px] font-bold cursor-pointer hover:ring-2 hover:ring-primary/40 hover:scale-110 transition-all shadow-sm ${c.bg} ${c.text}`}
                 onClick={(e) => {
+                  e.stopPropagation();
                   setAnchorRect(e.currentTarget.getBoundingClientRect());
                   setOpenDropdown("assignee-primary");
                 }}
                 title={name}
               >
-                {task.profiles?.avatar_url ? (
-                  <img src={task.profiles.avatar_url} className="size-8 rounded-full object-cover" alt="" />
-                ) : initials}
+                <img src={task.profiles?.avatar_url || "/logo.png"} className="size-8 rounded-full object-cover" alt="" />
               </div>
             );
           })()}
@@ -503,20 +499,20 @@ function PriorityRow({
               <div
                 className={`size-8 rounded-full flex items-center justify-center text-[11px] font-bold cursor-pointer hover:ring-2 hover:ring-primary/40 hover:scale-110 transition-all shadow-sm ${c.bg} ${c.text}`}
                 onClick={(e) => {
+                  e.stopPropagation();
                   setAnchorRect(e.currentTarget.getBoundingClientRect());
                   setOpenDropdown("assignee-secondary");
                 }}
                 title={name}
               >
-                {task.secondary_profile.avatar_url ? (
-                  <img src={task.secondary_profile.avatar_url} className="size-8 rounded-full object-cover" alt="" />
-                ) : initials}
+                <img src={task.secondary_profile.avatar_url || "/logo.png"} className="size-8 rounded-full object-cover" alt="" />
               </div>
             );
           })() : (
             <button
               className="size-8 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-primary hover:text-primary hover:scale-110 transition-all cursor-pointer"
               onClick={(e) => {
+                e.stopPropagation();
                 setAnchorRect(e.currentTarget.getBoundingClientRect());
                 setOpenDropdown("assignee-secondary");
               }}
@@ -653,9 +649,7 @@ function PriorityCard({
           const initials = task.profiles.full_name.substring(0, 2).toUpperCase();
           return (
             <div className={`size-7 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm ${c.bg} ${c.text}`} title={task.profiles.full_name}>
-              {task.profiles.avatar_url ? (
-                <img src={task.profiles.avatar_url} className="size-7 rounded-full object-cover" alt="" />
-              ) : initials}
+              <img src={task.profiles.avatar_url || "/logo.png"} className="size-7 rounded-full object-cover" alt="" />
             </div>
           );
         })()}

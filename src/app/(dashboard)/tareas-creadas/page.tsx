@@ -85,13 +85,7 @@ function DelegatedCard({
       {/* Assignee row */}
       {task.profiles?.full_name && (
         <div className="flex items-center gap-1.5 mb-3">
-          {task.profiles.avatar_url ? (
-            <img src={task.profiles.avatar_url} className="w-5 h-5 rounded-full object-cover" alt="" />
-          ) : (
-            <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-500">
-              {task.profiles.full_name.charAt(0)}
-            </div>
-          )}
+          <img src={task.profiles.avatar_url || "/logo.png"} className="w-5 h-5 rounded-full object-cover" alt="" />
           <span className="text-xs text-slate-500">{task.profiles.full_name}</span>
         </div>
       )}

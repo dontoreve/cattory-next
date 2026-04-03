@@ -70,7 +70,9 @@ function KanbanCard({
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           className={`task-card bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 cursor-pointer ${
-            snapshot.isDragging ? "shadow-lg ring-2 ring-primary/30" : ""
+            snapshot.isDragging
+              ? "shadow-lg ring-2 ring-primary/30 rotate-1 scale-[1.02] opacity-90"
+              : "transition-transform duration-200 ease-out"
           }`}
           onClick={() => onPreview(task)}
         >
@@ -117,29 +119,17 @@ function KanbanCard({
           {/* Footer: avatars + deadline */}
           <div className="flex items-center justify-between">
             <div className="flex items-center -space-x-2">
-              {task.profiles?.avatar_url ? (
-                <img
-                  src={task.profiles.avatar_url}
-                  className="w-6 h-6 rounded-full object-cover ring-2 ring-white dark:ring-slate-900"
-                  alt=""
-                />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 ring-2 ring-white dark:ring-slate-900 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                  {task.profiles?.full_name?.charAt(0) ?? "?"}
-                </div>
-              )}
+              <img
+                src={task.profiles?.avatar_url || "/logo.png"}
+                className="w-6 h-6 rounded-full object-cover ring-2 ring-white dark:ring-slate-900"
+                alt=""
+              />
               {task.secondary_profile?.full_name && (
-                task.secondary_profile.avatar_url ? (
-                  <img
-                    src={task.secondary_profile.avatar_url}
+                <img
+                    src={task.secondary_profile.avatar_url || "/logo.png"}
                     className="w-6 h-6 rounded-full object-cover ring-2 ring-white dark:ring-slate-900"
                     alt=""
                   />
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 ring-2 ring-white dark:ring-slate-900 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                    {task.secondary_profile.full_name.charAt(0)}
-                  </div>
-                )
               )}
             </div>
             {task.deadline && (
