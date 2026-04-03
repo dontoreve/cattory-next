@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useDashboard } from "@/contexts/DashboardContext";
+import { getPriorityConfig } from "@/lib/utils/priority";
 import { TAG_COLORS, getColorIndex } from "@/lib/utils/colors";
+import { formatDate } from "@/lib/utils/dates";
 import type { Task } from "@/lib/types";
 
 const MONTH_NAMES = [
@@ -195,19 +197,45 @@ export default function CalendarPage() {
                       TAG_COLORS[
                         getColorIndex(task.project_id ?? task.id)
                       ];
+                    const pc = getPriorityConfig(task.priority);
 
                     return (
-                      <button
-                        key={task.id}
-                        onClick={() => openPreview(task)}
-                        className={`w-full text-left px-1 md:px-1.5 py-0.5 rounded text-[8px] md:text-[10px] font-medium truncate transition-colors ${
-                          isDone
-                            ? "bg-slate-100 dark:bg-slate-800 text-slate-400 line-through"
-                            : `${color.bg} ${color.text} hover:ring-1 ${color.ring}`
-                        }`}
-                      >
-                        {task.title}
-                      </button>
+                      <div key={task.id} className="relative group/tip">
+                        <button
+                          onClick={() => openPreview(task)}
+                          className={`w-full text-left px-1 md:px-1.5 py-0.5 rounded text-[8px] md:text-[10px] font-medium truncate transition-colors ${
+                            isDone
+                              ? "bg-slate-100 dark:bg-slate-800 text-slate-400 line-through"
+                              : `${color.bg} ${color.text} hover:ring-1 ${color.ring}`
+                          }`}
+                        >
+                          {task.title}
+                        </button>
+                        {/* Hover tooltip */}
+                        <div className="hidden group-hover/tip:block absolute left-0 bottom-full mb-1 z-50 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-3 text-xs pointer-events-none">
+                          <p className="font-bold text-slate-800 dark:text-slate-200 mb-1.5 leading-tight">{task.title}</p>
+                          <div className="space-y-1 text-slate-500">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`} />
+                              <span>{pc.label}</span>
+                              <span className="mx-1">·</span>
+                              <span>{isDone ? "Completada" : task.status === "in-progress" ? "En Progreso" : "Por Hacer"}</span>
+                            </div>
+                            {task.projects?.name && (
+                              <p><span className="text-slate-400">Proyecto:</span> {task.projects.name}</p>
+                            )}
+                            {task.profiles?.full_name && (
+                              <p><span className="text-slate-400">Responsable:</span> {task.profiles.full_name}</p>
+                            )}
+                            {task.deadline && (
+                              <p><span className="text-slate-400">Deadline:</span> {formatDate(task.deadline)}</p>
+                            )}
+                            {isDone && task.completed_at && (
+                              <p><span className="text-slate-400">Completada:</span> {formatDate(task.completed_at.slice(0, 10))}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
                   {dayTasks.length > 3 && (

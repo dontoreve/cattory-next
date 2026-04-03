@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/Toast";
+import CustomSelect, { type SelectOption } from "@/components/ui/CustomSelect";
 import { getPriorityConfig, PRIORITY_BG } from "@/lib/utils/priority";
 import { formatDate } from "@/lib/utils/dates";
 import { TAG_COLORS, getColorIndex } from "@/lib/utils/colors";
@@ -13,14 +14,15 @@ import { matchesSearch } from "@/lib/utils/search";
 export default function BacklogPage() {
   const router = useRouter();
   const { role } = useAuth();
-  const { tasks, projects, teamMembers, reopenTask, deleteTask, openPreview } =
+  const { tasks, projects, teamMembers, reopenTask, deleteTask, openPreview, globalSearch } =
     useDashboard();
   const { showToast } = useToast();
 
   const [projectFilter, setProjectFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<number | null>(null);
   const [responsibleFilter, setResponsibleFilter] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [localSearch, setLocalSearch] = useState("");
+  const searchQuery = globalSearch || localSearch;
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Admin-only guard
@@ -94,63 +96,67 @@ export default function BacklogPage() {
     <div className="space-y-5">
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
-        {/* Search */}
-        <div className="relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-            search
-          </span>
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar..."
-            className="pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm w-52"
+        {/* Local search (visible when Header search is empty) */}
+        {!globalSearch && (
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+              search
+            </span>
+            <input
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              placeholder="Buscar..."
+              className="pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm w-52"
+            />
+          </div>
+        )}
+
+        {/* Project */}
+        <div className="w-48">
+          <CustomSelect
+            value={projectFilter}
+            onChange={setProjectFilter}
+            options={[
+              { value: "", label: "Todos los proyectos" },
+              ...projects.map((p) => ({ value: p.id, label: p.name })),
+              { value: "__none__", label: "Sin proyecto" },
+            ]}
+            placeholder="Todos los proyectos"
           />
         </div>
 
-        {/* Project */}
-        <select
-          value={projectFilter}
-          onChange={(e) => setProjectFilter(e.target.value)}
-          className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm cursor-pointer"
-        >
-          <option value="">Todos los proyectos</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-          <option value="__none__">Sin proyecto</option>
-        </select>
-
         {/* Priority */}
-        <select
-          value={priorityFilter ?? ""}
-          onChange={(e) =>
-            setPriorityFilter(e.target.value ? Number(e.target.value) : null)
-          }
-          className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm cursor-pointer"
-        >
-          <option value="">Todas las prioridades</option>
-          {[5, 4, 3, 2, 1].map((p) => (
-            <option key={p} value={p}>
-              {getPriorityConfig(p).label}
-            </option>
-          ))}
-        </select>
+        <div className="w-44">
+          <CustomSelect
+            value={String(priorityFilter ?? "")}
+            onChange={(v) => setPriorityFilter(v ? Number(v) : null)}
+            options={[
+              { value: "", label: "Todas las prioridades" },
+              ...([5, 4, 3, 2, 1] as const).map((p) => ({
+                value: String(p),
+                label: getPriorityConfig(p).label,
+                dotClass: getPriorityConfig(p).dot,
+              })),
+            ]}
+            placeholder="Todas las prioridades"
+          />
+        </div>
 
         {/* Responsible */}
-        <select
-          value={responsibleFilter}
-          onChange={(e) => setResponsibleFilter(e.target.value)}
-          className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm cursor-pointer"
-        >
-          <option value="">Todos</option>
-          {teamMembers.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.full_name ?? "Sin nombre"}
-            </option>
-          ))}
-        </select>
+        <div className="w-40">
+          <CustomSelect
+            value={responsibleFilter}
+            onChange={setResponsibleFilter}
+            options={[
+              { value: "", label: "Todos" },
+              ...teamMembers.map((m) => ({
+                value: m.id,
+                label: m.full_name ?? "Sin nombre",
+              })),
+            ]}
+            placeholder="Todos"
+          />
+        </div>
 
         <span className="text-xs text-slate-400 ml-auto">
           {backlogTasks.length} tarea{backlogTasks.length !== 1 ? "s" : ""}
@@ -159,8 +165,8 @@ export default function BacklogPage() {
       </div>
 
       {/* Table (desktop) */}
-      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <table className="w-full">
+      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-x-auto">
+        <table className="w-full min-w-[700px]">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
               <th className="py-3 px-4 text-left">Tarea</th>
