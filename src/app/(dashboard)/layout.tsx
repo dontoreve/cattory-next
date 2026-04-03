@@ -31,7 +31,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     completeTask,
     reopenTask,
     deleteTask,
+    memberAccess,
     getProjectsForMember,
+    refetchProjects,
+    refetchMembers,
     setGlobalSearch,
     previewTask,
     openPreview,
@@ -155,6 +158,12 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         open={teamModalOpen}
         onClose={() => setTeamModalOpen(false)}
         members={teamMembers}
+        projects={projects}
+        memberAccess={memberAccess}
+        onRefresh={() => {
+          refetchProjects();
+          refetchMembers();
+        }}
       />
 
       <TaskModal
