@@ -669,7 +669,7 @@ export default function PriorityPage() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left border-collapse">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
                 <th className="px-2 py-4 w-10">#</th>

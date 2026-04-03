@@ -149,9 +149,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         onEditRecurring={(t: any) => { setEditingRecurring(t); setRecurringModalOpen(true); }}
       />
 
-      <main className="flex-1 flex flex-col min-h-0 md:ml-[280px]">
+      <main className="flex-1 flex flex-col min-h-0 min-w-0 md:ml-[280px]">
         <Header pathname={pathname} onSearch={setGlobalSearch} />
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 pb-24 md:pb-8">
           {children}
         </div>
       </main>
