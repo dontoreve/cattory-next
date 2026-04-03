@@ -23,6 +23,7 @@ interface TaskModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (data: TaskFormData) => Promise<void>;
+  onDelete?: () => Promise<void>;
   /** If provided, the modal is in edit mode */
   task?: Task | null;
   /** Team members for the responsible dropdown */
@@ -49,12 +50,14 @@ export default function TaskModal({
   open,
   onClose,
   onSave,
+  onDelete,
   task,
   teamMembers,
   projects,
   currentUserId,
 }: TaskModalProps) {
   const isEdit = !!task;
+  const [deleting, setDeleting] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -128,6 +131,16 @@ export default function TaskModal({
   const removeLink = useCallback((index: number) => {
     setLinks((prev) => prev.filter((_, i) => i !== index));
   }, []);
+
+  async function handleDelete() {
+    if (!onDelete) return;
+    setDeleting(true);
+    try {
+      await onDelete();
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -302,7 +315,7 @@ export default function TaskModal({
                 <DatePicker
                   value={deadline}
                   onChange={setDeadline}
-                  mode="hover"
+                  mode="click"
                 />
               </div>
             </div>
@@ -312,26 +325,29 @@ export default function TaskModal({
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
                 Links
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   value={linkLabel}
                   onChange={(e) => setLinkLabel(e.target.value)}
                   placeholder="Nombre"
                   className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
                 />
-                <input
-                  value={linkUrl}
-                  onChange={(e) => setLinkUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={addLink}
-                  className="px-3 py-2 text-sm text-primary font-semibold hover:bg-primary/5 rounded-lg transition-colors"
-                >
-                  + Agregar
-                </button>
+                <div className="flex gap-2">
+                  <input
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    placeholder="https://..."
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLink(); } }}
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={addLink}
+                    className="shrink-0 px-3 py-2 text-sm text-primary font-semibold hover:bg-primary/5 rounded-lg transition-colors"
+                  >
+                    + Agregar
+                  </button>
+                </div>
               </div>
               {links.length > 0 && (
                 <div className="mt-2 space-y-1">
@@ -363,7 +379,19 @@ export default function TaskModal({
           </div>
 
           {/* Desktop footer */}
-          <div className="hidden sm:flex items-center justify-end gap-3 px-5 py-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="hidden sm:flex items-center gap-3 px-5 py-3 border-t border-slate-100 dark:border-slate-800">
+            {/* Delete button — edit mode only */}
+            {isEdit && onDelete && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium disabled:opacity-50"
+              >
+                {deleting ? "Eliminando..." : "Eliminar tarea"}
+              </button>
+            )}
+            <div className="flex-1" />
             <button
               type="button"
               onClick={onClose}

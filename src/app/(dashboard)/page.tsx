@@ -373,18 +373,16 @@ export default function PriorityPage() {
 
   // Project overview data
   const projectOverview = useMemo(() => {
-    const activeTasks = tasks.filter((t) => t.status !== "done" || t.completed_at);
     const byProject = new Map<string, { name: string; tasks: Task[] }>();
 
     for (const p of projects) {
-      byProject.set(p.id, {
-        name: p.name,
-        tasks: activeTasks.filter((t) => t.project_id === p.id),
-      });
+      const projectTasks = tasks.filter((t) => t.project_id === p.id);
+      if (projectTasks.length === 0) continue; // Skip projects with no tasks for this user
+      byProject.set(p.id, { name: p.name, tasks: projectTasks });
     }
 
     // Unassigned
-    const unassigned = activeTasks.filter((t) => !t.project_id);
+    const unassigned = tasks.filter((t) => !t.project_id);
     if (unassigned.length > 0) {
       byProject.set("__none__", { name: "Sin Proyecto", tasks: unassigned });
     }
@@ -503,26 +501,28 @@ export default function PriorityPage() {
           })}
         </div>
 
-        {/* Project filter chips */}
-        {projects.length > 0 && (
+        {/* Project filter chips — only projects where user has tasks */}
+        {projectOverview.filter((p) => p.id !== "__none__").length > 0 && (
           <div className="flex gap-1.5 flex-wrap">
-            {projects.map((p) => {
-              const active = projectFilters.has(p.id);
-              const color = TAG_COLORS[getColorIndex(p.id)];
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => toggleProjectFilter(p.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                    active
-                      ? `${color.bg} ${color.text}`
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  {p.name}
-                </button>
-              );
-            })}
+            {projectOverview
+              .filter((p) => p.id !== "__none__")
+              .map((p) => {
+                const active = projectFilters.has(p.id);
+                const color = TAG_COLORS[getColorIndex(p.id)];
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => toggleProjectFilter(p.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                      active
+                        ? `${color.bg} ${color.text}`
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                );
+              })}
           </div>
         )}
 

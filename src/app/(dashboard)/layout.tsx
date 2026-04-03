@@ -18,7 +18,7 @@ import { useCelebration } from "@/components/ui/CelebrationAnimation";
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, role } = useAuth();
   const {
     teamMembers,
     projects,
@@ -31,10 +31,17 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     completeTask,
     reopenTask,
     deleteTask,
+    getProjectsForMember,
     previewTask,
     openPreview,
     closePreview,
   } = useDashboard();
+
+  // Members only see their own accessible projects in the task modal
+  const modalProjects =
+    role === "member" && user?.id
+      ? getProjectsForMember(user.id)
+      : projects;
   const { showToast } = useToast();
   const celebrate = useCelebration();
 
@@ -153,9 +160,17 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         open={taskModalOpen}
         onClose={closeTaskModal}
         onSave={handleSaveTask}
+        onDelete={
+          editingTask
+            ? async () => {
+                await deleteTask(editingTask.id);
+                closeTaskModal();
+              }
+            : undefined
+        }
         task={editingTask}
         teamMembers={teamMembers}
-        projects={projects}
+        projects={modalProjects}
         currentUserId={user?.id ?? ""}
       />
 
