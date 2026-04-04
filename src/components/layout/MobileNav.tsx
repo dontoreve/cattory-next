@@ -23,9 +23,9 @@ export default function MobileNav({ onNewTask, onMoreClick }: MobileNavProps) {
 
   return (
     <nav
-      className="md:hidden fixed z-40 left-4 right-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/30 dark:border-slate-700/40 rounded-2xl shadow-xl shadow-black/10 dark:shadow-black/30 flex items-center justify-around px-2 h-14"
+      className="md:hidden fixed z-40 left-4 right-4 bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/30 dark:border-slate-700/40 rounded-full shadow-xl shadow-black/10 dark:shadow-black/30 flex items-center justify-around px-3 h-16"
       style={{
-        bottom: "max(12px, env(safe-area-inset-bottom, 12px))",
+        bottom: "max(16px, env(safe-area-inset-bottom, 16px))",
         transform: "translateZ(0)",
       }}
     >
@@ -34,7 +34,7 @@ export default function MobileNav({ onNewTask, onMoreClick }: MobileNavProps) {
         <Link
           key={tab.href}
           href={tab.href}
-          className={`flex items-center justify-center size-11 rounded-xl transition-colors ${
+          className={`flex items-center justify-center size-12 rounded-xl transition-colors ${
             isActive(tab.href) ? "text-primary" : "text-slate-400"
           }`}
         >
@@ -50,12 +50,12 @@ export default function MobileNav({ onNewTask, onMoreClick }: MobileNavProps) {
         </Link>
       ))}
 
-      {/* Center: New Task button — inside the bar */}
+      {/* Center: New Task button — blue square inside the bar */}
       <button
         onClick={onNewTask}
-        className="flex items-center justify-center size-11 rounded-xl bg-primary active:bg-primary/80 transition-colors"
+        className="flex items-center justify-center size-11 rounded-xl bg-primary active:bg-primary/80 transition-colors shadow-md shadow-primary/25"
       >
-        <span className="material-symbols-outlined text-white" style={{ fontSize: "24px" }}>
+        <span className="material-symbols-outlined text-white" style={{ fontSize: "26px" }}>
           add
         </span>
       </button>
@@ -65,7 +65,7 @@ export default function MobileNav({ onNewTask, onMoreClick }: MobileNavProps) {
         <Link
           key={tab.href}
           href={tab.href}
-          className={`flex items-center justify-center size-11 rounded-xl transition-colors ${
+          className={`flex items-center justify-center size-12 rounded-xl transition-colors ${
             isActive(tab.href) ? "text-primary" : "text-slate-400"
           }`}
         >
@@ -84,7 +84,7 @@ export default function MobileNav({ onNewTask, onMoreClick }: MobileNavProps) {
       {/* More button */}
       <button
         onClick={onMoreClick}
-        className="flex items-center justify-center size-11 rounded-xl transition-colors text-slate-400"
+        className="flex items-center justify-center size-12 rounded-xl transition-colors text-slate-400"
       >
         <span className="material-symbols-outlined" style={{ fontSize: "26px" }}>
           menu
