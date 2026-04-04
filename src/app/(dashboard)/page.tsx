@@ -909,40 +909,42 @@ export default function PriorityPage() {
 
       {/* ── Filters Bar ─────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-3">
-        {/* Priority filter chips */}
-        <DockGroup>
-          <DockChip
-            onClick={() => setPriorityFilter(null)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-              priorityFilter === null
-                ? "bg-primary text-white shadow-sm"
-                : "bg-slate-100 text-slate-500 hover:bg-primary/10 hover:text-primary"
-            }`}
-          >
-            Todas
-          </DockChip>
-          {[5, 4, 3, 2, 1].map((p) => {
-            const cfg = getPriorityConfig(p);
-            const active = priorityFilter === p;
-            return (
-              <DockChip
-                key={p}
-                onClick={() => setPriorityFilter(active ? null : p)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                  active
-                    ? `${PRIORITY_BG[p]} shadow-sm`
-                    : `bg-slate-100 text-slate-500 ${PRIORITY_HOVER[p]}`
-                }`}
-              >
-                {cfg.label}
-              </DockChip>
-            );
-          })}
-        </DockGroup>
+        {/* Priority filter chips — hidden on mobile to save space */}
+        <div className="hidden md:block">
+          <DockGroup>
+            <DockChip
+              onClick={() => setPriorityFilter(null)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+                priorityFilter === null
+                  ? "bg-primary text-white shadow-sm"
+                  : "bg-slate-100 text-slate-500 hover:bg-primary/10 hover:text-primary"
+              }`}
+            >
+              Todas
+            </DockChip>
+            {[5, 4, 3, 2, 1].map((p) => {
+              const cfg = getPriorityConfig(p);
+              const active = priorityFilter === p;
+              return (
+                <DockChip
+                  key={p}
+                  onClick={() => setPriorityFilter(active ? null : p)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+                    active
+                      ? `${PRIORITY_BG[p]} shadow-sm`
+                      : `bg-slate-100 text-slate-500 ${PRIORITY_HOVER[p]}`
+                  }`}
+                >
+                  {cfg.label}
+                </DockChip>
+              );
+            })}
+          </DockGroup>
+        </div>
 
-        {/* Separator */}
+        {/* Separator — desktop only */}
         {role === "admin" && teamMembers.length > 0 && (
-          <div className="w-px h-6 bg-slate-200 self-center" />
+          <div className="hidden md:block w-px h-6 bg-slate-200 self-center" />
         )}
 
         {/* User filter (admin only) */}
