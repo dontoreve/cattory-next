@@ -685,7 +685,7 @@ function PriorityCard({
           </div>
           {/* Date — always on its own line */}
           {task.deadline && (
-            <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded leading-none inline-block ${
+            <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded leading-none self-start ${
               overdue ? "text-red-600 bg-red-50" : "text-slate-400"
             }`}>
               {formatDate(task.deadline)}
