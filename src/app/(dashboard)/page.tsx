@@ -11,6 +11,7 @@ import { matchesSearch } from "@/lib/utils/search";
 import { TAG_COLORS, getColorIndex } from "@/lib/utils/colors";
 import { createPortal } from "react-dom";
 import DatePicker from "@/components/ui/DatePicker";
+import { DockChip, DockGroup } from "@/components/ui/DockFilterBar";
 import type { Task } from "@/lib/types";
 
 // ── Drag-to-scroll with momentum ──────────────────────────────
@@ -871,53 +872,53 @@ export default function PriorityPage() {
       )}
 
       {/* ── Filters Bar ─────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-end gap-3">
         {/* Priority filter chips */}
-        <div className="flex gap-2 flex-wrap items-center">
-          <button
+        <DockGroup>
+          <DockChip
             onClick={() => setPriorityFilter(null)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
               priorityFilter === null
                 ? "bg-primary text-white shadow-sm"
                 : "bg-slate-100 text-slate-500 hover:bg-primary/10 hover:text-primary"
             }`}
           >
             Todas
-          </button>
+          </DockChip>
           {[5, 4, 3, 2, 1].map((p) => {
             const cfg = getPriorityConfig(p);
             const active = priorityFilter === p;
             return (
-              <button
+              <DockChip
                 key={p}
                 onClick={() => setPriorityFilter(active ? null : p)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
                   active
                     ? `${PRIORITY_BG[p]} shadow-sm`
                     : `bg-slate-100 text-slate-500 ${PRIORITY_HOVER[p]}`
                 }`}
               >
                 {cfg.label}
-              </button>
+              </DockChip>
             );
           })}
-        </div>
+        </DockGroup>
 
         {/* Separator */}
         {role === "admin" && teamMembers.length > 0 && (
-          <div className="w-px h-6 bg-slate-200" />
+          <div className="w-px h-6 bg-slate-200 self-center" />
         )}
 
         {/* User filter (admin only) */}
         {role === "admin" && teamMembers.length > 0 && (
-          <div className="flex gap-2 flex-wrap items-center">
+          <DockGroup>
             {teamMembers.map((m) => {
               const active = userFilters.has(m.id);
               return (
-                <button
+                <DockChip
                   key={m.id}
                   onClick={() => toggleUserFilter(m.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
                     active
                       ? "bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20"
                       : "bg-slate-100 text-slate-500 hover:bg-slate-200"
@@ -929,10 +930,10 @@ export default function PriorityPage() {
                     alt=""
                   />
                   {m.full_name?.split(" ")[0] ?? "?"}
-                </button>
+                </DockChip>
               );
             })}
-          </div>
+          </DockGroup>
         )}
       </div>
 
