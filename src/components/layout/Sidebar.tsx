@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import type { RecurringTemplate } from "@/lib/hooks/useRecurringTasks";
 
 interface NavItem {
   href?: string;
@@ -29,21 +30,10 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-interface RecurringChip {
-  id: string;
-  title: string;
-  frequency: string;
-  days_of_week: number[];
-  week_of_month: number | null;
-  is_active: boolean;
-  priority: number;
-  profiles?: { full_name: string | null };
-}
-
 const DAY_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const WEEK_LABELS = ["1ra", "2da", "3ra", "4ta"];
 
-function getFreqSummary(t: RecurringChip): string {
+function getFreqSummary(t: RecurringTemplate): string {
   const dayStr = t.days_of_week.map((d) => DAY_SHORT[d]).join(", ");
   if (t.frequency === "weekly") return `Cada ${dayStr}`;
   if (t.frequency === "biweekly") return `Quincenal ${dayStr}`;
@@ -69,9 +59,9 @@ export default function Sidebar({
   onTeamClick?: () => void;
   onNewProjectClick?: () => void;
   onManageProjectsClick?: () => void;
-  recurringTemplates?: RecurringChip[];
+  recurringTemplates?: RecurringTemplate[];
   onNewRecurring?: () => void;
-  onEditRecurring?: (template: RecurringChip) => void;
+  onEditRecurring?: (template: RecurringTemplate) => void;
 }) {
   const pathname = usePathname();
   const { profile, role } = useAuth();

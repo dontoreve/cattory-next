@@ -50,22 +50,4 @@ export interface Notification {
   task?: Task | null;
 }
 
-export interface RecurringTemplate {
-  id: string;
-  title: string;
-  description: string | null;
-  priority: number;
-  project_id: string | null;
-  responsible_id: string;
-  secondary_responsible_id: string | null;
-  frequency: "daily" | "weekly" | "monthly";
-  day_of_week: number[] | null;
-  week_of_month: number | null;
-  repeat_until: string | null;
-  is_active: boolean;
-  last_generated_at: string | null;
-  created_by: string;
-  created_at: string;
-  projects?: { name: string } | null;
-  profiles?: { full_name: string | null } | null;
-}
+// RecurringTemplate is defined and exported from @/lib/hooks/useRecurringTasks

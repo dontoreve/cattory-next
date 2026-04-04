@@ -652,9 +652,7 @@ function PriorityCard({
           </span>
         )}
         {task.profiles?.full_name && (() => {
-          const cIdx = 3; // fallback color index for mobile card
-          const c = TAG_COLORS[(cIdx + 3) % TAG_COLORS.length] ?? TAG_COLORS[0];
-          const initials = task.profiles.full_name.substring(0, 2).toUpperCase();
+          const c = TAG_COLORS[getColorIndex(task.responsible_id)] ?? TAG_COLORS[0];
           return (
             <div className={`size-7 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm ${c.bg} ${c.text}`} title={task.profiles.full_name}>
               <img src={task.profiles.avatar_url || "/logo.png"} className="size-7 rounded-full object-cover" alt="" />
@@ -689,6 +687,14 @@ export default function PriorityPage() {
   const [projectFilters, setProjectFilters] = useState<Set<string>>(new Set());
   const [userFilters, setUserFilters] = useState<Set<string>>(new Set());
   const [viewAll, setViewAll] = useState(false);
+
+  // Reset "view all" whenever any filter changes so the count reflects the new subset
+  useEffect(() => {
+    setViewAll(false);
+  }, [priorityFilter, projectFilters, userFilters, searchQuery]);
+
+  // Delete confirmation modal state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Track tasks playing their completion animation
   const [completingTaskIds, setCompletingTaskIds] = useState<Set<string>>(new Set());
@@ -799,13 +805,18 @@ export default function PriorityPage() {
     }
   }
 
-  async function handleDelete(task: Task) {
-    if (!confirm(`¿Eliminar "${task.title}"?`)) return;
+  function handleDelete(task: Task) {
+    setConfirmDeleteId(task.id);
+  }
+
+  async function confirmDelete(taskId: string) {
     try {
-      await deleteTask(task.id);
+      await deleteTask(taskId);
       showToast("Tarea eliminada", "success");
     } catch {
       showToast("Error al eliminar la tarea");
+    } finally {
+      setConfirmDeleteId(null);
     }
   }
 
@@ -1042,6 +1053,36 @@ export default function PriorityPage() {
           </button>
         )}
       </div>
+
+      {/* Delete confirmation modal — consistent with Backlog */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setConfirmDeleteId(null)}
+          />
+          <div className="relative bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-2">Eliminar tarea</h3>
+            <p className="text-sm text-slate-500 mb-6">
+              Esta acción es permanente y no se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => confirmDelete(confirmDeleteId)}
+                className="flex-1 py-2 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

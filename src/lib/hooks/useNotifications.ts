@@ -24,7 +24,6 @@ export function useNotifications({ userId, role }: UseNotificationsOptions) {
       .order("created_at", { ascending: false })
       .limit(30);
     if (data) {
-      console.log(`[notifications] ${data.length} unread notifications loaded`);
       setNotifications(data as Notification[]);
     }
     setLoading(false);
@@ -74,9 +73,7 @@ export function useNotifications({ userId, role }: UseNotificationsOptions) {
           });
         }
       )
-      .subscribe((status) => {
-        console.log("[notifications] realtime subscription:", status);
-      });
+      .subscribe();
 
     channelRef.current = channel;
 

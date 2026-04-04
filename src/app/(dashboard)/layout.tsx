@@ -145,9 +145,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         onTeamClick={() => setTeamModalOpen(true)}
         onNewProjectClick={() => setProjectsModalOpen(true)}
         onManageProjectsClick={() => setProjectsModalOpen(true)}
-        recurringTemplates={recurringTemplates as any}
+        recurringTemplates={recurringTemplates}
         onNewRecurring={() => { setEditingRecurring(null); setRecurringModalOpen(true); }}
-        onEditRecurring={(t: any) => { setEditingRecurring(t); setRecurringModalOpen(true); }}
+        onEditRecurring={(t) => { setEditingRecurring(t); setRecurringModalOpen(true); }}
       />
 
       <main className="flex-1 flex flex-col min-h-0 min-w-0 md:ml-[280px]">
@@ -219,7 +219,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             await updateTemplate(editingRecurring.id, data);
             showToast("Recurrente actualizada", "success");
           } else {
-            await createTemplate(data as any);
+            await createTemplate(data as Parameters<typeof createTemplate>[0]);
             showToast("Recurrente creada", "success");
           }
         }}

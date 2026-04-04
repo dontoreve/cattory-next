@@ -204,8 +204,7 @@ export default function KanbanPage() {
     let filtered = tasks.filter(
       (t) =>
         t.responsible_id === effectiveUserId ||
-        t.secondary_responsible_id === effectiveUserId ||
-        t.created_by === effectiveUserId
+        t.secondary_responsible_id === effectiveUserId
     );
 
     if (searchQuery) {
