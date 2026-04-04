@@ -686,7 +686,9 @@ export default function PriorityPage() {
   // Filters
   const [priorityFilter, setPriorityFilter] = useState<number | null>(null);
   const [projectFilters, setProjectFilters] = useState<Set<string>>(new Set());
-  const [userFilters, setUserFilters] = useState<Set<string>>(new Set());
+  const [userFilters, setUserFilters] = useState<Set<string>>(() =>
+    user?.id ? new Set([user.id]) : new Set()
+  );
   const [viewAll, setViewAll] = useState(false);
 
   // Reset "view all" whenever any filter changes so the count reflects the new subset
