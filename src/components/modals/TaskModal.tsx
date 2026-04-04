@@ -67,8 +67,10 @@ export default function TaskModal({
   const [linkLabel, setLinkLabel] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [teamError, setTeamError] = useState(false);
 
   const linkUrlRef = useRef<HTMLInputElement>(null);
+  const teamSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (task) {
@@ -160,6 +162,13 @@ export default function TaskModal({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    // Validate responsible
+    if (!responsibleId) {
+      setTeamError(true);
+      teamSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => setTeamError(false), 2000);
+      return;
+    }
     // Auto-save any pending link
     const finalLinks = linkUrl.trim()
       ? [...links, { label: linkLabel.trim() || linkUrl.trim(), url: linkUrl.trim() }]
@@ -358,6 +367,9 @@ export default function TaskModal({
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLink(); } }}
                     placeholder="https://..."
                     inputMode="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     className="flex-1 bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none text-[15px] text-primary placeholder:text-slate-300 caret-primary"
                   />
                 </div>
@@ -370,10 +382,16 @@ export default function TaskModal({
             )}
 
             {/* ── Card 2: Team ────────────────────────────────────── */}
-            <div className="bg-white rounded-2xl p-4 mb-3 shadow-sm">
+            <div
+              ref={teamSectionRef}
+              className={`bg-white rounded-2xl p-4 mb-3 shadow-sm transition-all duration-300 ${teamError ? "ring-2 ring-red-400 animate-[shake_0.4s_ease-in-out]" : ""}`}
+            >
               <div className="flex items-center gap-2 mb-3">
                 <span className="material-symbols-outlined text-slate-400 text-[18px]">group</span>
                 <span className="text-[13px] font-semibold text-slate-500 uppercase tracking-wide">Equipo</span>
+                {teamError && (
+                  <span className="text-[12px] text-red-500 font-medium ml-auto">Elige un responsable</span>
+                )}
               </div>
               {teamPicker}
             </div>
@@ -502,8 +520,11 @@ export default function TaskModal({
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Equipo</label>
+              <div ref={teamSectionRef} className={`col-span-2 transition-all duration-300 ${teamError ? "ring-2 ring-red-400 rounded-xl p-2 animate-[shake_0.4s_ease-in-out]" : ""}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Equipo</label>
+                  {teamError && <span className="text-[11px] text-red-500 font-medium">— Elige un responsable</span>}
+                </div>
                 {teamPicker}
               </div>
               <div>
@@ -542,7 +563,7 @@ export default function TaskModal({
               <div className="flex flex-col sm:flex-row gap-2">
                 <input value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} placeholder="Nombre" className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
                 <div className="flex gap-2">
-                  <input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLink(); } }} className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
+                  <input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://..." autoCapitalize="none" autoCorrect="off" spellCheck={false} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLink(); } }} className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
                   <button type="button" onClick={addLink} className="shrink-0 size-10 flex items-center justify-center text-primary hover:bg-primary/10 rounded-xl transition-colors">
                     <span className="material-symbols-outlined text-[20px]">add</span>
                   </button>
