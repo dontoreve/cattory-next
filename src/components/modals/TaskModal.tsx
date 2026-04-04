@@ -71,6 +71,7 @@ export default function TaskModal({
 
   const linkUrlRef = useRef<HTMLInputElement>(null);
   const teamSectionRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (task) {
@@ -282,24 +283,32 @@ export default function TaskModal({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* ─── MOBILE — Apple Reminders inspired ──────────────────── */}
-      <div className="relative w-full sm:hidden bg-slate-100 shadow-2xl flex flex-col h-dvh">
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          {/* Drag handle — functional: swipe down to close */}
+      <div
+        ref={modalRef}
+        className="relative w-full sm:hidden bg-slate-100 shadow-2xl flex flex-col h-dvh transition-transform duration-200"
+      >
+        <form onSubmit={handleSubmit} autoComplete="off" role="presentation" className="flex flex-col flex-1 min-h-0">
+          {/* Drag header — entire top area is draggable to dismiss */}
           <div
-            className="flex justify-center shrink-0 cursor-grab active:cursor-grabbing"
-            style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))", paddingBottom: "0.25rem" }}
+            className="shrink-0 touch-none"
+            style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
             onPointerDown={(e: ReactPointerEvent) => {
+              // Don't capture if tapping a button
+              if ((e.target as HTMLElement).closest("button")) return;
+              e.preventDefault();
               const startY = e.clientY;
-              const el = e.currentTarget.parentElement?.parentElement;
-              if (!el) return;
+              const modal = modalRef.current;
+              if (!modal) return;
+              modal.style.transition = "none";
               const handleMove = (ev: globalThis.PointerEvent) => {
-                const dy = ev.clientY - startY;
-                if (dy > 0) el.style.transform = `translateY(${dy}px)`;
+                const dy = Math.max(0, ev.clientY - startY);
+                modal.style.transform = `translateY(${dy}px)`;
               };
               const handleUp = (ev: globalThis.PointerEvent) => {
                 const dy = ev.clientY - startY;
-                el.style.transform = "";
-                if (dy > 100) onClose();
+                modal.style.transition = "transform 0.25s ease";
+                modal.style.transform = "";
+                if (dy > 120) onClose();
                 document.removeEventListener("pointermove", handleMove);
                 document.removeEventListener("pointerup", handleUp);
               };
@@ -307,28 +316,31 @@ export default function TaskModal({
               document.addEventListener("pointerup", handleUp);
             }}
           >
-            <div className="w-9 h-[5px] rounded-full bg-slate-300" />
-          </div>
+            {/* Handle bar */}
+            <div className="flex justify-center pb-1">
+              <div className="w-9 h-[5px] rounded-full bg-slate-300" />
+            </div>
 
-          {/* Header — iOS style with pill buttons */}
-          <div className="flex items-center justify-between px-4 py-2 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="size-8 flex items-center justify-center rounded-full bg-slate-200/80 active:bg-slate-300 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[18px] text-slate-500">close</span>
-            </button>
-            <h2 className="text-[17px] font-bold text-slate-900">
-              {isEdit ? "Editar Tarea" : "Nueva Tarea"}
-            </h2>
-            <button
-              type="submit"
-              disabled={saving || !title.trim()}
-              className="size-8 flex items-center justify-center rounded-full bg-primary active:bg-primary/80 transition-colors disabled:opacity-30"
-            >
-              <span className="material-symbols-outlined text-[18px] text-white">check</span>
-            </button>
+            {/* Header buttons + title */}
+            <div className="flex items-center justify-between px-4 py-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="size-8 flex items-center justify-center rounded-full bg-slate-200/80 active:bg-slate-300 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px] text-slate-500">close</span>
+              </button>
+              <h2 className="text-[17px] font-bold text-slate-900">
+                {isEdit ? "Editar Tarea" : "Nueva Tarea"}
+              </h2>
+              <button
+                type="submit"
+                disabled={saving || !title.trim()}
+                className="size-8 flex items-center justify-center rounded-full bg-primary active:bg-primary/80 transition-colors disabled:opacity-30"
+              >
+                <span className="material-symbols-outlined text-[18px] text-white">check</span>
+              </button>
+            </div>
           </div>
 
           {/* Scrollable content */}
@@ -339,15 +351,18 @@ export default function TaskModal({
               {/* Title — large like Reminders */}
               <div className="px-4 pt-4 pb-1">
                 <input
+                  type="search"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Nombre de la tarea"
                   required
                   autoFocus
-                  name="task-title-field"
-                  autoComplete="one-time-code"
+                  name="task-title-x"
+                  autoComplete="off"
+                  data-lpignore="true"
                   data-form-type="other"
-                  className="w-full text-[22px] font-bold bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none placeholder:text-slate-300 text-slate-900 caret-primary"
+                  enterKeyHint="done"
+                  className="w-full text-[22px] font-bold bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none placeholder:text-slate-300 text-slate-900 caret-primary [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                 />
               </div>
               {/* Description */}
@@ -525,8 +540,9 @@ export default function TaskModal({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Nombre de la tarea"
               required
-              name="task-title-field"
-              autoComplete="one-time-code"
+              name="task-title-x"
+              autoComplete="off"
+              data-lpignore="true"
               data-form-type="other"
               className="w-full text-lg font-semibold bg-transparent border-none outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
             />
