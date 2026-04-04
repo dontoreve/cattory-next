@@ -191,17 +191,19 @@ export default function TeamMembersModal({
                       <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
                         {member.full_name || "Sin nombre"}
                       </p>
-                      {/* Role badge — clickable for admin */}
-                      {isAdmin && !isSelf ? (
+                      {/* Role badge — clickable for admin (including self) */}
+                      {isAdmin ? (
                         <button
                           onClick={() => toggleRole(member)}
-                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mt-0.5 transition-colors ${
+                          className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mt-0.5 transition-colors active:scale-95 ${
                             member.role === "admin"
                               ? "bg-primary/10 text-primary hover:bg-primary/20"
                               : "bg-emerald-100 text-emerald-600 hover:bg-emerald-200"
                           }`}
                         >
                           {member.role}
+                          {isSelf ? " (tú)" : ""}
+                          <span className="material-symbols-outlined text-[10px] opacity-60">swap_horiz</span>
                         </button>
                       ) : (
                         <span
@@ -212,7 +214,6 @@ export default function TeamMembersModal({
                           }`}
                         >
                           {member.role}
-                          {isSelf ? " (tú)" : ""}
                         </span>
                       )}
                     </div>
