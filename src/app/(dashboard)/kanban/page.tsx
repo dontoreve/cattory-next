@@ -242,7 +242,7 @@ export default function KanbanPage() {
 
   // Drag and drop handler
   const handleDragEnd = useCallback(
-    async (result: DropResult) => {
+    (result: DropResult) => {
       if (!result.destination) return;
       const newStatus = result.destination.droppableId as Status;
       const taskId = result.draggableId;
@@ -254,14 +254,15 @@ export default function KanbanPage() {
         completed_at: newStatus === "done" ? new Date().toISOString() : null,
       };
 
-      try {
-        await updateTask(taskId, updates);
+      // Fire-and-forget: optimistic update inside updateTask is synchronous,
+      // so the card moves instantly without waiting for Supabase to respond.
+      updateTask(taskId, updates).then(() => {
         if (newStatus === "done") {
           celebrate(null, profile?.full_name?.split(" ")[0]);
         }
-      } catch {
+      }).catch(() => {
         showToast("Error al mover la tarea");
-      }
+      });
     },
     [kanbanTasks, updateTask, celebrate, profile, showToast]
   );

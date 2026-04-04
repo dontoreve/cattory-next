@@ -34,13 +34,13 @@ export function DockChip({ children, onClick, className }: DockChipProps) {
     return val - (rect.left + rect.width / 2);
   });
 
-  // Scale: 1.0 far → 1.5 at center
-  const scaleRaw = useTransform(distance, [-100, 0, 100], [1.0, 1.5, 1.0]);
-  const scale = useSpring(scaleRaw, { mass: 0.1, stiffness: 200, damping: 14 });
+  // Scale: 1.0 far → 1.18 at center — subtle, no overlapping
+  const scaleRaw = useTransform(distance, [-80, 0, 80], [1.0, 1.18, 1.0]);
+  const scale = useSpring(scaleRaw, { mass: 0.1, stiffness: 220, damping: 18 });
 
-  // Float upward at center
-  const yRaw = useTransform(distance, [-100, 0, 100], [0, -6, 0]);
-  const y = useSpring(yRaw, { mass: 0.1, stiffness: 200, damping: 14 });
+  // Float upward at center — barely noticeable lift
+  const yRaw = useTransform(distance, [-80, 0, 80], [0, -3, 0]);
+  const y = useSpring(yRaw, { mass: 0.1, stiffness: 220, damping: 18 });
 
   return (
     <motion.button
